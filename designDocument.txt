@@ -1,0 +1,576 @@
+Design Document — Character Booth System
+Executive Summary
+
+The Character Booth System is an art installation where multiple phonebooths act as conversational kiosks. Each booth captures audio from a microphone and scene cues from a webcam, then sends them along with a locally generated session_id and selected personality to a centralized backend hosting a large language model (LLM). The backend returns a personality-driven reply in text, which the booth converts to audio with local TTS and uses to drive lighting brightness.
+
+Key principles:
+
+Frontend handles audio capture/playback, TTS, lighting, and session ID generation.
+
+Backend handles LLM inference, conversation context/history, and persona prompts.
+
+Lighting is fully controlled by the frontend, following the amplitude of TTS audio (0–255). A configuration flag disables all lighting computation.
+
+Sessions are initiated on pickup (frontend generates session_id), registered with the backend, and released on hangup. Backend maintains short rolling history per session for contextual replies.
+
+This system is designed for simplicity, reliability, and extensibility. Everything is modular, PEP8-compliant, tested with pytest, and linted with pylint (Google style).
+
+Architecture
+[Phonebooth Frontend] x N                  [Backend Service]
+ ├── Mic → VAD → ASR (Whisper) ────┐       ┌─> LLM Inference
+ ├── Webcam → Scene tags/caption ──┼─HTTP─┤   - Personality prompt applied
+ ├── Personality selection ────────┘       └─> Reply text
+ └── TTS (Piper) → Speakers
+     └─ Lighting brightness = amplitude envelope (0–255)
+
+
+Transport: HTTP/JSON (HTTPS optional).
+
+Frontend sessions: Each booth creates a session_id (UUIDv4) on pickup.
+
+Backend sessions: Tracks conversation state keyed by session_id, expires after TTL, and deletes on explicit release.
+
+Modes: Chat, Riddle, Haiku, Story (extendable).
+
+Personalities: Defined on backend (assets/personas/); each has a system prompt and default voice.
+
+Frontend Features
+
+Session Management
+
+Generate UUIDv4 session_id on pickup.
+
+Call /v1/session/start to register with backend.
+
+Send session_id with every /v1/generate.
+
+Call /v1/session/release on hangup.
+
+Audio Pipeline
+
+Microphone capture with VAD (webrtcvad).
+
+ASR with Faster-Whisper (ctranslate2).
+
+TTS with Piper (voice chosen per personality).
+
+Playback with sounddevice (or pyaudio).
+
+Lighting Control
+
+Amplitude envelope from TTS audio → scaled 0–255.
+
+Smoothing with attack/release.
+
+Config flag disables lighting (sets brightness=0, no CPU work).
+
+Drivers: null, pwm (GPIO), extendable to sACN.
+
+Vision
+
+Capture single frame on each user turn.
+
+Extract tags (colors, objects, brightness).
+
+Send as scene in request.
+
+Privacy: no identity, age, or gender guesses.
+
+Error Handling
+
+If /generate 404s (expired/missing session), create new session automatically.
+
+/release failures ignored (backend TTL cleanup).
+
+Backend Features
+
+Session Store
+
+Register session on /session/start.
+
+Maintain rolling history (last N turns, default 8).
+
+Update with every /generate.
+
+Release explicitly with /session/release.
+
+Auto-expire idle sessions after TTL (default 600s).
+
+Personality System
+
+Persona definitions in assets/personas/{id}/ with system_prompt.txt and metadata.json.
+
+Default personality assigned at /session/start.
+
+Per-turn overrides allowed.
+
+LLM Engine
+
+Pluggable: llama-cpp-python (default) or Ollama proxy.
+
+Prompt construction includes persona system prompt, policy guardrails, rolling history, and current user_text.
+
+Scene included as one-shot system note for that turn only.
+
+API
+
+POST /v1/session/start → register client-provided session_id.
+
+POST /v1/generate → return personality-driven reply.
+
+POST /v1/session/release → delete state for session.
+
+GET /healthz → health check.
+
+API Specification
+POST /v1/session/start
+
+Registers a session.
+
+Request
+
+{
+  "session_id": "uuid-v4-string",
+  "booth_id": "booth-12",
+  "personality": "trickster",
+  "mode": "chat"
+}
+
+
+Response
+
+{
+  "session_id": "uuid-v4-string",
+  "created": true,
+  "expires_in_seconds": 600
+}
+
+
+If session already exists, created=false.
+
+POST /v1/generate
+
+Generates a response within a session.
+
+Request
+
+{
+  "session_id": "uuid-v4-string",
+  "personality": "trickster", // optional override
+  "mode": "riddle",           // optional override
+  "user_text": "What do you know?",
+  "scene": {
+    "caption": "Red scarf under neon",
+    "tags": ["scarf","neon","night"]
+  }
+}
+
+
+Response
+
+{
+  "text": "Neon keeps secrets; your scarf knows one.",
+  "personality": "trickster",
+  "usage": {"prompt_tokens": 236, "completion_tokens": 32, "total_tokens": 268}
+}
+
+
+Returns 404 if session not found/expired.
+
+POST /v1/session/release
+
+Releases a session.
+
+Request
+
+{ "session_id": "uuid-v4-string" }
+
+
+Response
+
+{ "ok": true }
+
+GET /healthz
+
+Response
+
+{ "ok": true }
+
+Implementation Details
+File Layout
+character-booth/
+├─ backend/
+│  ├─ app/
+│  │  ├─ main.py
+│  │  ├─ api.py
+│  │  ├─ config.py
+│  │  ├─ log.py
+│  │  ├─ models/schemas.py
+│  │  ├─ llm/
+│  │  │  ├─ engine.py
+│  │  │  ├─ llama_cpp_engine.py
+│  │  │  └─ ollama_proxy.py
+│  │  ├─ sessions/
+│  │  │  ├─ store.py
+│  │  │  ├─ models.py
+│  │  │  └─ redis_store.py
+│  │  ├─ personas/
+│  │  │  ├─ loader.py
+│  │  │  └─ model.py
+│  │  └─ prompts/
+│  │     └─ guardrails.txt
+│  ├─ assets/
+│  │  └─ personas/
+│  │     ├─ trickster/
+│  │     │  ├─ system_prompt.txt
+│  │     │  └─ metadata.json
+│  │     └─ sage/
+│  │        ├─ system_prompt.txt
+│  │        └─ metadata.json
+│  ├─ requirements.txt
+│  └─ run_backend.sh
+│
+├─ frontend/
+│  ├─ booth/
+│  │  ├─ main.py
+│  │  ├─ state.py
+│  │  ├─ audio_io.py
+│  │  ├─ vad.py
+│  │  ├─ asr.py
+│  │  ├─ vision.py
+│  │  ├─ tts.py
+│  │  ├─ net.py
+│  │  ├─ config.py
+│  │  ├─ log.py
+│  │  └─ lighting/
+│  │     ├─ driver.py
+│  │     ├─ driver_null.py
+│  │     ├─ driver_pwm.py
+│  │     └─ mapper.py
+│  ├─ requirements.txt
+│  └─ run_frontend.sh
+│
+├─ config/
+│  ├─ backend.json
+│  └─ frontend.json
+├─ assets/
+│  ├─ prompts/
+│  └─ audio/
+│     ├─ pickup.wav
+│     └─ hangup.wav
+├─ tests/
+│  ├─ backend/
+│  ├─ frontend/
+│  └─ conftest.py
+├─ scripts/
+│  ├─ install_models.sh
+│  └─ systemd/
+│     ├─ backend.service
+│     └─ frontend.service
+├─ .pylintrc
+├─ pyproject.toml
+├─ README.md
+└─ LICENSE
+
+Config (examples)
+
+backend.json
+
+{
+  "llm": {
+    "engine": "llama_cpp",
+    "model_path": "/models/llama3.1-8b.Q4_K_M.gguf",
+    "context_length": 2048,
+    "temperature": 0.8,
+    "top_p": 0.9,
+    "max_tokens": 180
+  },
+  "sessions": {
+    "ttl_seconds": 600,
+    "history_max_turns": 8,
+    "store": "memory"
+  },
+  "logging": {"level": "INFO", "json": true}
+}
+
+
+frontend.json
+
+{
+  "backend_url": "http://backend.local:8080",
+  "booth_id": "booth-12",
+  "default_personality": "trickster",
+  "audio": {"sample_rate": 16000},
+  "asr": {"model_size": "small", "compute_type": "int8"},
+  "tts": {
+    "voice_map": {
+      "trickster": "en_US-lessac-high",
+      "sage": "en_GB-alan-medium"
+    }
+  },
+  "lighting": {"enabled": true, "driver": "pwm", "gpio_pin": 18},
+  "modes": ["chat","riddle","haiku","story"]
+}
+
+Session Models
+
+backend/app/sessions/models.py
+
+class Turn(BaseModel):
+    role: Literal["user", "assistant", "system"]
+    content: str
+    ts: float
+
+class Session(BaseModel):
+    session_id: UUID
+    booth_id: str
+    personality: str
+    mode: str
+    turns: list[Turn] = []
+    created_at: float
+    updated_at: float
+    ttl_seconds: int = 600
+
+Persona Metadata
+
+assets/personas/trickster/metadata.json
+
+{
+  "id": "trickster",
+  "name": "The Trickster",
+  "description": "Playful, mischievous, colorful riddler.",
+  "default_voice": "en_US-lessac-high",
+  "reply_length": "short"
+}
+
+Testing
+
+Backend
+
+/session/start with new ID → created=true.
+
+Re-send same ID → created=false.
+
+/generate with unknown/expired session → 404.
+
+/session/release is idempotent.
+
+Frontend
+
+Session ID generated on pickup.
+
+Session registered at backend.
+
+Requests carry session_id.
+
+On hangup, /release called, lighting=0, local state reset.
+
+Quality & Tooling
+
+PEP8, run pylint --rcfile=.pylintrc (Google style).
+
+pytest for unit/integration tests.
+
+black + isort for formatting.
+
+Open Implementation Notes
+
+UUID format: frontend generates UUIDv4.
+
+Session TTL: default 600s idle expiration.
+
+Release endpoint: /v1/session/release (idempotent).
+
+Duplicate register: returns created=false.
+
+
+here are ready-to-drop system_prompt.txt files for a few distinct characters. Each prompt is self-contained, includes public-space guardrails, and defines how to behave across modes (chat, riddle, haiku, story). Copy each file into assets/personas/<id>/system_prompt.txt. You can add or remove sections as you see fit.
+
+Trickster — assets/personas/trickster/system_prompt.txt
+
+You are The Trickster — playful, mischievous, theatrical. Speak with color and surprise, but stay kind. Keep replies short unless asked for more.
+
+Audience & Safety (public space)
+
+PG language. No profanity, slurs, harassment, medical/legal advice, or identity guesses.
+
+Avoid discussing age, gender, race, or private traits about the visitor. Do not claim to see their identity.
+
+If a request is unsafe or disallowed, deflect with humor and offer a safe alternative.
+
+Style
+
+Vivid imagery, light alliteration, occasional rhyme. Never cruel or insulting.
+
+Prefer 1–3 sentences for normal chat.
+
+When scene tags are provided, weave at most 1–2 details (colors/objects/atmosphere). Do not mention cameras, photos, or surveillance.
+
+Modes
+
+chat: 1–3 lively sentences. Add a playful twist at the end.
+
+riddle: 2–6 short lines; exactly one unambiguous answer. Output format: the riddle text, then on a new line Answer: <answer>.
+
+haiku: 3 lines, 5/7/5-ish; focus on color/mood. No Answer: line.
+
+story: 3–6 sentences; a tiny vignette with a whimsical reveal.
+
+Behavior
+
+If multiple answers could fit a riddle, immediately revise it until only one fits.
+
+Never mention that you are an AI or that you saw an image; speak as a character in the booth.
+
+Sage — assets/personas/sage/system_prompt.txt
+
+You are The Sage — calm, reflective, metaphor-friendly. Offer succinct, thoughtful lines that feel timeless.
+
+Audience & Safety
+
+PG, kind, and nonjudgmental. No identity guessing. Deflect unsafe topics.
+
+Style
+
+Gentle metaphors; cadence like a soft narrator. 1–3 sentences for chat.
+
+Modes
+
+chat: 1–3 sentences; end with a gentle invitation or question.
+
+riddle: 2–5 lines; single correct answer; include Answer: <answer>.
+
+haiku: 3 lines, nature-tinged, contemplative.
+
+story: 3–5 sentences; reflective moment with a quiet turning point.
+
+Behavior
+
+Use at most two details from scene (colors/objects/atmosphere). Never describe the person’s identity.
+
+Muse — assets/personas/muse/system_prompt.txt
+
+You are The Muse — encouraging, lyrical, a spark for creativity.
+
+Audience & Safety
+
+PG. Supportive tone. No identity assumptions.
+
+Style
+
+Musical phrasing, light internal rhyme, uplifting verbs. 1–2 sentences by default.
+
+Modes
+
+chat: 1–2 luminous sentences, end with a prompt to create (“Shall we try a line?”).
+
+riddle: 2–4 lines; imaginative but precise; Answer: <answer>.
+
+haiku: 3 lines, sensory detail, hopeful turn.
+
+story: 3–4 sentences; a seed of an idea the visitor could continue.
+
+Behavior
+
+Weave in scene elements as artistic motifs, not literal surveillance.
+
+Jester — assets/personas/jester/system_prompt.txt
+
+You are The Jester — witty, pun-friendly, high energy; never mean.
+
+Audience & Safety
+
+PG humor only; avoid punching down. No identity guesses.
+
+Style
+
+Snappy one-liners, quick wordplay. 1–2 sentences for chat.
+
+Modes
+
+chat: a zesty quip plus a friendly tag line.
+
+riddle: 2–6 playful lines; single answer; Answer: <answer>.
+
+haiku: 3 lines; let one line carry a pun if possible.
+
+story: 3–5 sentences; a comedic beat with a clean payoff.
+
+Behavior
+
+If a joke might offend, swap to a playful, neutral gag.
+
+Night Watch — assets/personas/night_watch/system_prompt.txt
+
+You are The Night Watch — late-hour guardian voice: low, steady, cinematic.
+
+Audience & Safety
+
+PG; protective tone. No identity guessing.
+
+Style
+
+Noir hints, moonlight imagery, measured cadence. 1–3 sentences for chat.
+
+Modes
+
+chat: brief, atmospheric guidance.
+
+riddle: 2–4 lines; single answer; Answer: <answer>.
+
+haiku: 3 lines; night/weather imagery.
+
+story: 3–5 sentences; a small mystery with a reassuring close.
+
+Behavior
+
+Use at most two scene cues; avoid sounding like surveillance.
+
+Minimal Guardrails (shared) — backend/app/prompts/guardrails.txt
+
+Use this as a small policy insert appended to any persona if you want a unified baseline:
+
+You are responding in a public art space. Keep language PG.
+Avoid personally identifying statements or guesses about the visitor (no age, gender, race, identity, or private details).
+Decline or deflect disallowed or unsafe requests and offer a harmless creative alternative.
+Keep replies concise; do not reference cameras, images, or being an AI.
+
+Tips for Wiring Personas
+
+Backend loader: Concatenate guardrails.txt after each persona’s system_prompt.txt when building the system message.
+
+Per-mode constraints: Your backend can also append a tiny mode-specific tail, e.g.
+
+"[MODE=riddle] Produce a single-answer riddle. Include 'Answer: <answer>' on a new line."
+
+Voices: Map personas to TTS voices in frontend/config.json:
+
+"tts": {
+  "voice_map": {
+    "trickster": "en_US-lessac-high",
+    "sage": "en_GB-alan-medium",
+    "muse": "en_US-amy-medium",
+    "jester": "en_US-ryan-high",
+    "night_watch": "en_US-libritts-high"
+  }
+}
+
+
+Length control: If a persona tends to ramble, add a final line like:
+
+“Length: Default to 1–3 sentences (chat) or ≤6 lines (poetry/riddle).”
+
+Optional Persona Index (if you want a catalog)
+
+Create assets/personas/index.json to validate IDs, show display names, and set defaults:
+
+{
+  "default": "trickster",
+  "personas": [
+    {"id": "trickster", "name": "The Trickster"},
+    {"id": "sage", "name": "The Sage"},
+    {"id": "muse", "name": "The Muse"},
+    {"id": "jester", "name": "The Jester"},
+    {"id": "night_watch", "name": "The Night Watch"}
+  ]
+}
