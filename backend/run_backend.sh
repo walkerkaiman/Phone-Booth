@@ -25,6 +25,12 @@ HOST="0.0.0.0"
 PORT="8080"
 
 echo "Starting server on $HOST:$PORT..."
+echo
+echo "Network Access:"
+echo "  - Local: http://localhost:$PORT"
+echo "  - Network: http://[YOUR_IP]:$PORT"
+echo "  - Update config/frontend.json with your backend IP"
+echo
 echo "Press Ctrl+C to stop the server."
 echo
 

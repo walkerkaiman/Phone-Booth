@@ -59,6 +59,11 @@ This repository contains a complete, modular scaffold for both backend and front
       - `driver_null.py`: No-op driver
       - `driver_pwm.py`: PWM GPIO driver (placeholder)
       - `mapper.py`: Amplitude-to-brightness mapper (placeholder)
+  - `web_ui/`: Web-based phone booth simulator
+    - `app.py`: Flask web application
+    - `templates/phone_booth.html`: Main interface template
+    - `requirements.txt`: Web UI dependencies
+    - `run_web_ui.bat` / `run_web_ui.sh`: Web UI startup scripts
   - `requirements.txt`: Frontend Python dependencies
   - `run_frontend.bat` / `run_frontend.sh`: Dev helper to run the booth loop (Windows/macOS/Linux)
 
@@ -73,6 +78,9 @@ This repository contains a complete, modular scaffold for both backend and front
 - **`scripts/`**
   - `install_models.bat` / `install_models.sh`: Placeholder to download model assets (Windows/macOS/Linux; edit for real URLs)
   - `systemd/`: Example unit files (`backend.service`, `frontend.service`)
+
+- **Master Startup Scripts**
+  - `start_system.bat` / `start_system.sh`: One-command startup for entire system (Windows/macOS/Linux)
 
 - **`tests/`**: Pytest scaffolding for backend and frontend
 
@@ -132,13 +140,21 @@ Download models (edit `scripts/install_models.bat` or `scripts/install_models.sh
 
 ```json
 {
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8080,
+    "cors_origins": ["*"]
+  },
   "llm": {
     "engine": "llama_cpp",
     "model_path": "/models/llama3.1-8b.Q4_K_M.gguf",
     "context_length": 2048,
     "temperature": 0.8,
     "top_p": 0.9,
-    "max_tokens": 180
+    "max_tokens": 180,
+    "n_gpu_layers": -1,
+    "n_threads": null,
+    "verbose": false
   },
   "sessions": {
     "ttl_seconds": 600,
@@ -148,6 +164,16 @@ Download models (edit `scripts/install_models.bat` or `scripts/install_models.sh
   "logging": {"level": "INFO", "json": true}
 }
 ```
+
+**LLM Engine Options:**
+- `"engine": "echo"` - Development/testing (echoes user input)
+- `"engine": "llama_cpp"` - Local inference with llama-cpp-python
+- `"engine": "ollama"` - Remote inference via Ollama API
+
+**GPU Configuration:**
+- `"n_gpu_layers": -1` - Use all available GPU layers
+- `"n_gpu_layers": 0` - CPU-only inference
+- `"n_gpu_layers": 10` - Use first 10 layers on GPU
 
 - **Frontend:** `config/frontend.json`
 
@@ -175,6 +201,33 @@ Download models (edit `scripts/install_models.bat` or `scripts/install_models.sh
 
 The scripts are the primary entry points for running the applications. They handle environment setup, dependency checks, and provide helpful error messages.
 
+### Quick Start (Recommended)
+
+**One-command startup for the entire system:**
+
+**Windows:**
+```bat
+start_system.bat
+```
+
+**macOS/Linux:**
+```bash
+./start_system.sh
+```
+
+This will:
+- Start the backend server
+- Wait for it to be ready
+- Launch the frontend (which automatically starts the web UI)
+- Open both applications in separate windows/processes
+- Provide access URLs for both services
+
+### Manual Startup
+
+### Network Deployment
+
+For production deployment with backend and frontend on separate computers, see [NETWORK_SETUP.md](NETWORK_SETUP.md) for detailed instructions.
+
 ### Backend
 
 **Primary method - Use the entry point script:**
@@ -201,7 +254,29 @@ uvicorn backend.app.main:create_app --host 0.0.0.0 --port 8080
 
 ### Frontend (Booth)
 
-**Primary method - Use the entry point script:**
+**Web UI (Recommended for Development):**
+
+A web-based interface that simulates phone booth interactions for testing and development.
+
+**Windows:**
+```bat
+frontend\web_ui\run_web_ui.bat
+```
+
+**macOS/Linux:**
+```bash
+./frontend/web_ui/run_web_ui.sh
+```
+
+The web UI provides:
+- Visual phone booth interface
+- Personality and mode selection
+- Real-time conversation history
+- Lighting simulation
+- Performance statistics
+- Access at: http://localhost:5000
+
+**Physical Booth (Production):**
 
 **Windows:**
 ```bat
@@ -215,8 +290,11 @@ frontend\run_frontend.bat
 
 The script will:
 - Check for virtual environment activation
+- **Automatically launch the web UI** in a new window/background
 - Start the booth application
 - Provide helpful error messages if setup is incomplete
+
+**Note:** The web UI will be available at http://localhost:5000 when the frontend starts.
 
 **Alternative - Direct Python (for advanced users):**
 ```bash
@@ -287,7 +365,7 @@ Response:
 {"ok": true}
 ```
 
-- **GET** `/healthz` — service health check
+- **GET** `/v1/healthz` — service health check
 
 Response:
 ```json
@@ -351,8 +429,9 @@ pytest -q
 
 ## Roadmap
 
-- Implement minimal FastAPI app in `backend/app/main.py` and route handlers in `api.py`.
-- Implement in-memory session store and optional Redis store.
+- ✅ Implement minimal FastAPI app in `backend/app/main.py` and route handlers in `api.py`.
+- ✅ Implement in-memory session store and optional Redis store.
+- ✅ Implement LlamaCppEngine for local LLM inference.
 - Implement frontend loop with real audio I/O, VAD, ASR, vision tagging, TTS, and lighting control.
 - Add comprehensive tests and CI.
 - Provide scripts to fetch models automatically and validate integrity.

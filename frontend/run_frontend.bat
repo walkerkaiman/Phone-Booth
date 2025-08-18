@@ -24,6 +24,13 @@ echo Starting booth application...
 echo Press Ctrl+C to stop the application.
 echo.
 
+rem Start the web UI in a new window
+echo Starting web interface...
+start "Phone Booth Web UI" cmd /c "cd /d "%~dp0.." && python frontend\web_ui\app.py"
+
+rem Wait a moment for web UI to start
+timeout /t 3 /nobreak >nul
+
 rem Start the frontend application
 python -m frontend.booth.main
 set EXITCODE=%ERRORLEVEL%

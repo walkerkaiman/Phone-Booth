@@ -38,38 +38,49 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api import router as api_router
+from .config import config
 
 
 def create_app() -> FastAPI:
 	"""Application factory that creates and configures the FastAPI app."""
 	app = FastAPI(title="Character Booth Backend", version="0.1.0")
 
-	# Minimal permissive CORS for development; tighten for production
+	# Configure CORS from config
+	cors_origins = config.server.get("cors_origins", ["*"])
 	app.add_middleware(
 		CORSMiddleware,
-		allow_origins=["*"],
+		allow_origins=cors_origins,
 		allow_credentials=True,
 		allow_methods=["*"],
 		allow_headers=["*"],
 	)
 
 	app.include_router(api_router)
+	
+	# Add root-level health check endpoint
+	@app.get("/healthz")
+	def healthz():
+		return {"ok": True}
+	
 	return app
 
 
 def run():
 	"""Main entry point for the backend application."""
-	print("Character Booth Backend - Starting...")
-	print("(This is a placeholder implementation)")
-	print("In the real implementation, this would:")
-	print("1. Load configuration")
-	print("2. Initialize logging")
-	print("3. Create FastAPI app with routes")
-	print("4. Start the server")
-	return 0
+	import uvicorn
+	
+	app = create_app()
+	
+	# Get server configuration
+	host = config.server.get("host", "0.0.0.0")
+	port = config.server.get("port", 8080)
+	
+	print(f"Character Booth Backend - Starting on {host}:{port}")
+	
+	uvicorn.run(app, host=host, port=port)
 
 
 if __name__ == "__main__":
-	sys.exit(run())
+	run()
 
 

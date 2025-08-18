@@ -12,7 +12,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from .llm.engine import EchoEngine, LanguageModelEngine
+from .config import config
+from .llm.engine import create_engine, LanguageModelEngine
 from .models.schemas import (
 	GenerateRequest,
 	GenerateResponse,
@@ -40,7 +41,9 @@ def get_store() -> SessionStore:
 
 def get_engine() -> LanguageModelEngine:
 	if not hasattr(get_engine, "_engine"):
-		setattr(get_engine, "_engine", EchoEngine())
+		# Create engine based on configuration
+		llm_config = config.llm
+		setattr(get_engine, "_engine", create_engine(llm_config))
 	return getattr(get_engine, "_engine")
 
 
@@ -115,15 +118,24 @@ def generate(
 	if mode:
 		system_prompt = f"{system_prompt}\n\n[MODE={mode}]"
 
-	text, usage = engine.generate(system_prompt=system_prompt, messages=messages)
+	# Get generation parameters from config
+	llm_config = config.llm
+	text, usage = engine.generate(
+		system_prompt=system_prompt,
+		messages=messages,
+		max_tokens=llm_config.get("max_tokens", 180),
+		temperature=llm_config.get("temperature", 0.8),
+		top_p=llm_config.get("top_p", 0.9),
+	)
 
 	# Append user and assistant turns
 	now = time.time()
 	store.append_turn(session.session_id, Turn(role="user", content=request.user_text, ts=now))
 	store.append_turn(session.session_id, Turn(role="assistant", content=text, ts=now))
 
-	# Trim history to default 8 (could be config-driven)
-	truncate_history(session, history_max_turns=8)
+	# Trim history to configured limit
+	history_max_turns = config.sessions.get("history_max_turns", 8)
+	truncate_history(session, history_max_turns=history_max_turns)
 
 	return GenerateResponse(text=text, personality=personality, usage=usage)
 

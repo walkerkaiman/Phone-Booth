@@ -1,17 +1,34 @@
 {
-	"backend_url": "http://backend.local:8080",
+	"backend_url": "http://localhost:8080",
 	"booth_id": "booth-12",
 	"default_personality": "trickster",
-	"audio": {"sample_rate": 16000},
-	"asr": {"model_size": "small", "compute_type": "int8"},
+	"audio": {
+		"sample_rate": 16000,
+		"input_device": 21,
+		"output_device": 12
+	},
+	"asr": {
+		"model_size": "small",
+		"compute_type": "int8"
+	},
 	"tts": {
 		"voice_map": {
 			"trickster": "en_US-lessac-high",
-			"sage": "en_GB-alan-medium"
+			"sage": "en_GB-alan-medium",
+			"muse": "en_US-lessac-high",
+			"jester": "en_GB-alan-medium",
+			"night_watch": "en_US-lessac-high"
 		}
 	},
-	"lighting": {"enabled": true, "driver": "pwm", "gpio_pin": 18},
-	"modes": ["chat", "riddle", "haiku", "story"]
+	"lighting": {
+		"enabled": true,
+		"driver": "pwm",
+		"gpio_pin": 18
+	},
+	"modes": [
+		"chat",
+		"riddle",
+		"haiku",
+		"story"
+	]
 }
-
-

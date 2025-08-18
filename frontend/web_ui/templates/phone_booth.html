@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phone Booth Simulator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .phone-booth {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            max-width: 800px;
+            width: 100%;
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.9em;
+            letter-spacing: 1px;
+        }
+
+        .status-idle { background: #e0e0e0; color: #666; }
+        .status-pickup { background: #4CAF50; color: white; }
+        .status-listening { background: #2196F3; color: white; }
+        .status-processing { background: #FF9800; color: white; }
+        .status-speaking { background: #9C27B0; color: white; }
+        .status-hangup { background: #F44336; color: white; }
+        .status-error { background: #F44336; color: white; }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .control-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid #e9ecef;
+        }
+
+        .control-section h3 {
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #495057;
+            font-weight: 500;
+        }
+
+        .form-group select,
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group select:focus,
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .conversation {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 2px solid #e9ecef;
+        }
+
+        .conversation h3 {
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 10px;
+            position: relative;
+        }
+
+        .message.user {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            margin-left: 20px;
+        }
+
+        .message.assistant {
+            background: #f3e5f5;
+            border-left: 4px solid #9C27B0;
+            margin-right: 20px;
+        }
+
+        .message-header {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .message-text {
+            font-size: 1em;
+            line-height: 1.5;
+            color: #333;
+        }
+
+        .message-meta {
+            font-size: 0.8em;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .lighting-simulation {
+            background: #2c3e50;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .lighting-simulation h3 {
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .light-bulb {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin: 0 auto;
+            background: #34495e;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        .light-bulb.active {
+            background: #f1c40f;
+            box-shadow: 0 0 30px rgba(241, 196, 15, 0.8);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #c62828;
+        }
+
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #2e7d32;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .phone-booth {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+
+        /* Message styles */
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="phone-booth">
+        <div class="header">
+            <h1>📞 Phone Booth Simulator</h1>
+            <div class="status-indicator" id="statusIndicator">Idle</div>
+        </div>
+
+        <div class="controls">
+            <div class="control-section">
+                <h3>🎭 Personality & Mode</h3>
+                <div class="form-group">
+                    <label for="personality">Personality:</label>
+                    <select id="personality">
+                        <option value="trickster">The Trickster</option>
+                        <option value="sage">The Sage</option>
+                        <option value="muse">The Muse</option>
+                        <option value="jester">The Jester</option>
+                        <option value="night_watch">The Night Watch</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="mode">Mode:</label>
+                    <select id="mode">
+                        <option value="chat">Chat</option>
+                        <option value="riddle">Riddle</option>
+                        <option value="haiku">Haiku</option>
+                        <option value="story">Story</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="pickupBtn" onclick="pickupPhone()">📞 Pick Up Phone</button>
+                <button class="btn btn-danger" id="hangupBtn" onclick="hangupPhone()" disabled>📞 Hang Up Phone</button>
+            </div>
+
+            <div class="control-section">
+                <h3>💬 Speak</h3>
+                <div class="form-group">
+                    <label for="message">Your Message:</label>
+                    <textarea id="message" rows="3" placeholder="Type your message here..."></textarea>
+                </div>
+                <button class="btn btn-primary" id="speakBtn" onclick="speak()" disabled>🎤 Speak</button>
+            </div>
+        </div>
+
+        <div class="control-section" style="margin-bottom: 20px;">
+            <h3>🎤 Audio Configuration</h3>
+            <div class="form-group">
+                <label for="inputDevice">Microphone:</label>
+                <select id="inputDevice">
+                    <option value="">Loading...</option>
+                </select>
+                <button class="btn" style="margin-top: 5px; padding: 5px 10px; font-size: 12px;" onclick="testInputDevice()">Test</button>
+            </div>
+            <div class="form-group">
+                <label for="outputDevice">Speaker:</label>
+                <select id="outputDevice">
+                    <option value="">Loading...</option>
+                </select>
+                <button class="btn" style="margin-top: 5px; padding: 5px 10px; font-size: 12px;" onclick="testOutputDevice()">Test</button>
+            </div>
+            <button class="btn btn-primary" onclick="saveAudioConfig()" style="margin-top: 10px;">💾 Save Audio Settings</button>
+        </div>
+
+        <div class="lighting-simulation">
+            <h3>💡 Lighting Simulation</h3>
+            <div class="light-bulb" id="lightBulb"></div>
+        </div>
+
+        <div class="conversation">
+            <h3>💭 Conversation History</h3>
+            <div id="conversationHistory"></div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="totalConversations">0</div>
+                <div class="stat-label">Conversations</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalTurns">0</div>
+                <div class="stat-label">Turns</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="avgProcessingTime">0.0s</div>
+                <div class="stat-label">Avg Processing</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="uptime">0s</div>
+                <div class="stat-label">Uptime</div>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing...</p>
+        </div>
+
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        // Global variables
+        let socket;
+        let currentState = 'idle';
+        let sessionActive = false;
+        let lightAnimation = null;
+
+        // Initialize WebSocket connection
+        function initSocket() {
+            socket = io();
+            
+            socket.on('connect', function() {
+                console.log('Connected to server');
+                updateStatus();
+            });
+            
+            socket.on('disconnect', function() {
+                console.log('Disconnected from server');
+            });
+            
+            socket.on('status', function(data) {
+                updateState(data.state, data.session_active);
+            });
+        }
+
+        // Update UI state
+        function updateState(state, sessionActive) {
+            currentState = state;
+            sessionActive = sessionActive;
+            
+            const statusIndicator = document.getElementById('statusIndicator');
+            const pickupBtn = document.getElementById('pickupBtn');
+            const hangupBtn = document.getElementById('hangupBtn');
+            const speakBtn = document.getElementById('speakBtn');
+            const messageInput = document.getElementById('message');
+            
+            // Update status indicator
+            statusIndicator.textContent = state.charAt(0).toUpperCase() + state.slice(1);
+            statusIndicator.className = `status-indicator status-${state}`;
+            
+            // Update button states
+            pickupBtn.disabled = sessionActive;
+            hangupBtn.disabled = !sessionActive;
+            speakBtn.disabled = !sessionActive;
+            messageInput.disabled = !sessionActive;
+            
+            // Update UI based on state
+            switch(state) {
+                case 'idle':
+                    stopLightAnimation();
+                    break;
+                case 'pickup':
+                    // Phone is picked up
+                    break;
+                case 'listening':
+                    // Listening for input
+                    break;
+                case 'processing':
+                    showLoading(true);
+                    break;
+                case 'speaking':
+                    showLoading(false);
+                    // Start lighting animation
+                    break;
+                case 'hangup':
+                    stopLightAnimation();
+                    break;
+                case 'error':
+                    stopLightAnimation();
+                    break;
+            }
+        }
+
+        // Pick up phone
+        async function pickupPhone() {
+            const personality = document.getElementById('personality').value;
+            const mode = document.getElementById('mode').value;
+            
+            try {
+                const response = await fetch('/api/pickup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        personality: personality,
+                        mode: mode
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    updateStatus();
+                    loadConversation(); // Load any existing conversation
+                } else {
+                    showMessage(data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Failed to pick up phone: ' + error.message, 'error');
+            }
+        }
+
+        // Hang up phone
+        async function hangupPhone() {
+            try {
+                const response = await fetch('/api/hangup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    updateStatus();
+                    clearConversation();
+                } else {
+                    showMessage(data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Failed to hang up phone: ' + error.message, 'error');
+            }
+        }
+
+        // Speak
+        async function speak() {
+            const message = document.getElementById('message').value.trim();
+            
+            if (!message) {
+                showMessage('Please enter a message', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/speak', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        personality: document.getElementById('personality').value,
+                        mode: document.getElementById('mode').value
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    console.log('Speak response received:', data);
+                    
+                    // Add messages to conversation
+                    addMessage('You', message, 'user');
+                    addMessage('Assistant', data.response, 'assistant', data.processing_time);
+                    
+                    // Animate lighting
+                    animateLighting(data.amplitude_envelope);
+                    
+                    // Clear input
+                    document.getElementById('message').value = '';
+                    
+                    showMessage(`Response received in ${data.processing_time.toFixed(2)}s`, 'success');
+                } else {
+                    showMessage(data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Failed to send message: ' + error.message, 'error');
+            }
+        }
+
+        // Add message to conversation
+        function addMessage(sender, text, type, processingTime = null) {
+            console.log(`Adding message: ${sender} - ${text} (${type})`);
+            
+            const conversationHistory = document.getElementById('conversationHistory');
+            if (!conversationHistory) {
+                console.error('Conversation history element not found!');
+                return;
+            }
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            let metaText = `${timestamp}`;
+            if (processingTime) {
+                metaText += ` • Processing: ${processingTime.toFixed(2)}s`;
+            }
+            
+            messageDiv.innerHTML = `
+                <div class="message-header">${sender}</div>
+                <div class="message-text">${text}</div>
+                <div class="message-meta">${metaText}</div>
+            `;
+            
+            conversationHistory.appendChild(messageDiv);
+            conversationHistory.scrollTop = conversationHistory.scrollHeight;
+            
+            console.log(`Message added successfully. Total messages: ${conversationHistory.children.length}`);
+        }
+
+        // Clear conversation
+        function clearConversation() {
+            document.getElementById('conversationHistory').innerHTML = '';
+        }
+
+        // Show loading indicator
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            loading.style.display = show ? 'block' : 'none';
+        }
+
+        // Show message
+        function showMessage(text, type) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type;
+            messageDiv.textContent = text;
+            
+            messagesDiv.appendChild(messageDiv);
+            
+            // Remove message after 5 seconds
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+
+        // Animate lighting based on amplitude envelope
+        function animateLighting(amplitudeEnvelope) {
+            stopLightAnimation();
+            
+            const lightBulb = document.getElementById('lightBulb');
+            let index = 0;
+            
+            lightAnimation = setInterval(() => {
+                if (index < amplitudeEnvelope.length) {
+                    const brightness = amplitudeEnvelope[index];
+                    const intensity = Math.floor(brightness * 255);
+                    
+                    if (intensity > 50) {
+                        lightBulb.classList.add('active');
+                        lightBulb.style.boxShadow = `0 0 ${30 + intensity}px rgba(241, 196, 15, ${brightness})`;
+                    } else {
+                        lightBulb.classList.remove('active');
+                        lightBulb.style.boxShadow = '0 0 20px rgba(255, 255, 255, 0.1)';
+                    }
+                    
+                    index++;
+                } else {
+                    stopLightAnimation();
+                }
+            }, 50); // Update every 50ms
+        }
+
+        // Stop lighting animation
+        function stopLightAnimation() {
+            if (lightAnimation) {
+                clearInterval(lightAnimation);
+                lightAnimation = null;
+            }
+            
+            const lightBulb = document.getElementById('lightBulb');
+            lightBulb.classList.remove('active');
+            lightBulb.style.boxShadow = '0 0 20px rgba(255, 255, 255, 0.1)';
+        }
+
+        // Update status
+        async function updateStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                updateState(data.state, data.session_active);
+                updateStats(data.stats);
+            } catch (error) {
+                console.error('Failed to update status:', error);
+            }
+        }
+
+        // Load conversation history
+        async function loadConversation() {
+            try {
+                console.log('Loading conversation history...');
+                const response = await fetch('/api/conversation');
+                const data = await response.json();
+                
+                console.log('Conversation data:', data);
+                
+                // Clear existing conversation
+                clearConversation();
+                
+                // Add each turn to the conversation
+                data.conversation.forEach(turn => {
+                    console.log('Adding turn:', turn);
+                    addMessage('You', turn.user_text, 'user');
+                    addMessage('Assistant', turn.assistant_text, 'assistant', turn.processing_time);
+                });
+                
+                console.log('Conversation loaded successfully');
+            } catch (error) {
+                console.error('Failed to load conversation:', error);
+            }
+        }
+
+        // Update statistics
+        function updateStats(stats) {
+            document.getElementById('totalConversations').textContent = stats.total_conversations;
+            document.getElementById('totalTurns').textContent = stats.total_turns;
+            document.getElementById('avgProcessingTime').textContent = 
+                stats.avg_processing_time ? `${stats.avg_processing_time.toFixed(2)}s` : '0.0s';
+            document.getElementById('uptime').textContent = 
+                `${Math.floor(stats.uptime_seconds)}s`;
+        }
+
+        // Handle Enter key in message input
+        document.getElementById('message').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                speak();
+            }
+        });
+
+        // Audio Configuration Functions
+        async function loadAudioDevices() {
+            try {
+                const response = await fetch('/api/audio/devices');
+                const data = await response.json();
+                
+                if (data.error) {
+                    showMessage('Failed to load audio devices: ' + data.error, 'error');
+                    return;
+                }
+                
+                // Populate input devices
+                const inputSelect = document.getElementById('inputDevice');
+                inputSelect.innerHTML = '<option value="">Default System Microphone</option>';
+                
+                data.input_devices.forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = device.index;
+                    option.textContent = `[${device.index}] ${device.name} (${device.host_api})`;
+                    if (device.index === data.default_input) {
+                        option.textContent += ' (Default)';
+                    }
+                    inputSelect.appendChild(option);
+                });
+                
+                // Populate output devices
+                const outputSelect = document.getElementById('outputDevice');
+                outputSelect.innerHTML = '<option value="">Default System Speaker</option>';
+                
+                data.output_devices.forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = device.index;
+                    option.textContent = `[${device.index}] ${device.name} (${device.host_api})`;
+                    if (device.index === data.default_output) {
+                        option.textContent += ' (Default)';
+                    }
+                    outputSelect.appendChild(option);
+                });
+                
+                // Load current configuration
+                loadCurrentAudioConfig();
+                
+            } catch (error) {
+                console.error('Failed to load audio devices:', error);
+                showMessage('Failed to load audio devices', 'error');
+            }
+        }
+
+        async function loadCurrentAudioConfig() {
+            try {
+                const response = await fetch('/api/audio/config');
+                const config = await response.json();
+                
+                if (config.error) {
+                    console.warn('Failed to load audio config:', config.error);
+                    return;
+                }
+                
+                // Set current values
+                if (config.input_device !== null && config.input_device !== undefined) {
+                    document.getElementById('inputDevice').value = config.input_device;
+                }
+                if (config.output_device !== null && config.output_device !== undefined) {
+                    document.getElementById('outputDevice').value = config.output_device;
+                }
+                
+            } catch (error) {
+                console.error('Failed to load audio config:', error);
+            }
+        }
+
+        async function saveAudioConfig() {
+            try {
+                const inputDevice = document.getElementById('inputDevice').value;
+                const outputDevice = document.getElementById('outputDevice').value;
+                
+                const response = await fetch('/api/audio/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        input_device: inputDevice ? parseInt(inputDevice) : null,
+                        output_device: outputDevice ? parseInt(outputDevice) : null
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage('Audio configuration saved successfully!', 'success');
+                } else {
+                    showMessage('Failed to save audio configuration: ' + result.error, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Failed to save audio config:', error);
+                showMessage('Failed to save audio configuration', 'error');
+            }
+        }
+
+        async function testInputDevice() {
+            const deviceIndex = document.getElementById('inputDevice').value;
+            if (!deviceIndex) {
+                showMessage('Please select an input device first', 'warning');
+                return;
+            }
+            
+            try {
+                showMessage('Testing microphone... Speak into the microphone for 3 seconds', 'info');
+                
+                const response = await fetch(`/api/audio/test/input/${deviceIndex}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage('Microphone test completed successfully!', 'success');
+                } else {
+                    showMessage('Microphone test failed: ' + result.error, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Failed to test input device:', error);
+                showMessage('Failed to test microphone', 'error');
+            }
+        }
+
+        async function testOutputDevice() {
+            const deviceIndex = document.getElementById('outputDevice').value;
+            if (!deviceIndex) {
+                showMessage('Please select an output device first', 'warning');
+                return;
+            }
+            
+            try {
+                showMessage('Testing speaker... Playing test tone', 'info');
+                
+                const response = await fetch(`/api/audio/test/output/${deviceIndex}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage('Speaker test completed successfully!', 'success');
+                } else {
+                    showMessage('Speaker test failed: ' + result.error, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Failed to test output device:', error);
+                showMessage('Failed to test speaker', 'error');
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initSocket();
+            updateStatus();
+            loadAudioDevices(); // Load audio devices
+            loadConversation(); // Load conversation history
+            
+            // Update status every 5 seconds
+            setInterval(updateStatus, 5000);
+        });
+    </script>
+</body>
+</html>

@@ -23,7 +23,7 @@ Notes for new contributors:
 
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Dict, Tuple
 
 
 class LanguageModelEngine:  # pylint: disable=too-few-public-methods
@@ -52,5 +52,44 @@ class EchoEngine(LanguageModelEngine):
 		text = f"[echo] {last_user}".strip()
 		usage = {"prompt_tokens": 0, "completion_tokens": len(text.split()), "total_tokens": len(text.split())}
 		return text, usage
+
+
+def create_engine(config: Dict) -> LanguageModelEngine:
+	"""Factory function to create an LLM engine based on configuration.
+	
+	Args:
+		config: LLM configuration dictionary
+		
+	Returns:
+		Configured LanguageModelEngine instance
+	"""
+	engine_type = config.get("engine", "echo")
+	
+	if engine_type == "echo":
+		return EchoEngine()
+	elif engine_type == "llama_cpp":
+		try:
+			from .llama_cpp_engine import create_llama_cpp_engine
+			return create_llama_cpp_engine(config)
+		except ImportError as e:
+			raise ImportError(
+				f"llama_cpp engine requested but not available: {e}. "
+				"Install with: pip install llama-cpp-python"
+			) from e
+	elif engine_type == "ollama":
+		try:
+			from .ollama_proxy import OllamaProxyEngine
+			return OllamaProxyEngine(
+				model_path=config.get("model_path", "llama3.1:8b"),
+				base_url=config.get("base_url", "http://localhost:11434"),
+				timeout=config.get("timeout", 30.0)
+			)
+		except ImportError as e:
+			raise ImportError(
+				f"ollama engine requested but not available: {e}. "
+				"Install with: pip install httpx"
+			) from e
+	else:
+		raise ValueError(f"Unknown engine type: {engine_type}")
 
 
