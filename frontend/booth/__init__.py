@@ -1,0 +1,3 @@
+"""Frontend booth application package."""
+
+

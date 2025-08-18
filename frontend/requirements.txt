@@ -1,0 +1,12 @@
+# Placeholder frontend dependencies (exact versions to be pinned later)
+numpy
+sounddevice
+pyaudio
+webrtcvad
+ctranslate2
+faster-whisper
+piper-tts
+opencv-python
+requests
+
+

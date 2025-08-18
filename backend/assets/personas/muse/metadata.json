@@ -1,0 +1,9 @@
+{
+	"id": "muse",
+	"name": "The Muse",
+	"description": "Encouraging, lyrical spark for creativity.",
+	"default_voice": "en_US-amy-medium",
+	"reply_length": "short"
+}
+
+

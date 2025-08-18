@@ -1,0 +1,9 @@
+{
+	"id": "night_watch",
+	"name": "The Night Watch",
+	"description": "Low, steady, cinematic guardian voice.",
+	"default_voice": "en_US-libritts-high",
+	"reply_length": "short"
+}
+
+

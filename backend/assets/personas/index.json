@@ -1,0 +1,12 @@
+{
+	"default": "trickster",
+	"personas": [
+		{"id": "trickster", "name": "The Trickster"},
+		{"id": "sage", "name": "The Sage"},
+		{"id": "muse", "name": "The Muse"},
+		{"id": "jester", "name": "The Jester"},
+		{"id": "night_watch", "name": "The Night Watch"}
+	]
+}
+
+

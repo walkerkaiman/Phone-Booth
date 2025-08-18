@@ -1,0 +1,9 @@
+# Placeholder backend dependencies (exact versions to be pinned later)
+fastapi
+uvicorn
+pydantic
+llama-cpp-python
+redis
+httpx
+
+

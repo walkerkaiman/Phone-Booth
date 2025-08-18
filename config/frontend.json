@@ -1,0 +1,17 @@
+{
+	"backend_url": "http://backend.local:8080",
+	"booth_id": "booth-12",
+	"default_personality": "trickster",
+	"audio": {"sample_rate": 16000},
+	"asr": {"model_size": "small", "compute_type": "int8"},
+	"tts": {
+		"voice_map": {
+			"trickster": "en_US-lessac-high",
+			"sage": "en_GB-alan-medium"
+		}
+	},
+	"lighting": {"enabled": true, "driver": "pwm", "gpio_pin": 18},
+	"modes": ["chat", "riddle", "haiku", "story"]
+}
+
+

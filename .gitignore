@@ -1,6 +1,13 @@
+# Character Booth System - .gitignore
+# Comprehensive ignore patterns for Python-based phone booth installation
+
+# =============================================================================
+# Python
+# =============================================================================
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[codz]
+*.py[cod]
 *$py.class
 
 # C extensions
@@ -46,7 +53,7 @@ htmlcov/
 nosetests.xml
 coverage.xml
 *.cover
-*.py.cover
+*.py,cover
 .hypothesis/
 .pytest_cache/
 cover/
@@ -94,35 +101,20 @@ ipython_config.py
 #   install all needed dependencies.
 #Pipfile.lock
 
-# UV
-#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#uv.lock
-
 # poetry
 #   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
 #   This is especially recommended for binary packages to ensure reproducibility, and is more
 #   commonly ignored for libraries.
 #   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
 #poetry.lock
-#poetry.toml
 
 # pdm
 #   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#   pdm recommends including project-wide configuration in pdm.toml, but excluding .pdm-python.
-#   https://pdm-project.org/en/latest/usage/project/#working-with-version-control
 #pdm.lock
-#pdm.toml
-.pdm-python
-.pdm-build/
-
-# pixi
-#   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
-#pixi.lock
-#   Pixi creates a virtual environment in the .pixi directory, just like venv module creates one
-#   in the .venv directory. It is recommended not to include this directory in version control.
-.pixi
+#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
+#   in version control.
+#   https://pdm.fming.dev/#use-with-ide
+.pdm.toml
 
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
 __pypackages__/
@@ -136,7 +128,6 @@ celerybeat.pid
 
 # Environments
 .env
-.envrc
 .venv
 env/
 venv/
@@ -170,38 +161,284 @@ cython_debug/
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
+#  be added to the global gitignore or merged into this project gitignore.  For a PyCharm
+#  project, it is recommended to include the following files:
+#  - .idea/
+#  - *.iml
+#  - *.ipr
+#  - *.iws
+.idea/
+*.iml
+*.ipr
+*.iws
 
-# Abstra
-# Abstra is an AI-powered process automation framework.
-# Ignore directories containing user credentials, local state, and settings.
-# Learn more at https://abstra.io/docs
-.abstra/
+# =============================================================================
+# Virtual Environments
+# =============================================================================
 
-# Visual Studio Code
-#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
-#  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#  and can be added to the global gitignore or merged into this file. However, if you prefer, 
-#  you could uncomment the following to ignore the entire vscode folder
-# .vscode/
+# Virtual environment directories
+.venv/
+venv/
+env/
+ENV/
 
-# Ruff stuff:
-.ruff_cache/
+# Virtual environment activation scripts (Windows)
+.venv/Scripts/
+venv/Scripts/
+env/Scripts/
 
-# PyPI configuration file
-.pypirc
+# =============================================================================
+# IDE and Editor Files
+# =============================================================================
 
-# Cursor
-#  Cursor is an AI-powered code editor. `.cursorignore` specifies files/directories to
-#  exclude from AI features like autocomplete and code analysis. Recommended for sensitive data
-#  refer to https://docs.cursor.com/context/ignore-files
-.cursorignore
-.cursorindexingignore
+# VSCode
+.vscode/
+*.code-workspace
 
-# Marimo
-marimo/_static/
-marimo/_lsp/
-__marimo__/
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# =============================================================================
+# OS-Specific Files
+# =============================================================================
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.tmp
+*.temp
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# =============================================================================
+# Project-Specific Files
+# =============================================================================
+
+# Model files (large binary files)
+models/
+*.gguf
+*.bin
+*.safetensors
+*.onnx
+*.pb
+*.tflite
+*.h5
+*.pkl
+*.joblib
+
+# Audio files (generated or downloaded)
+assets/audio/generated/
+assets/audio/downloaded/
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.m4a
+
+# Video files
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+
+# Image files (captured or generated)
+assets/images/captured/
+assets/images/generated/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.webp
+
+# Log files
+logs/
+*.log
+*.log.*
+
+# Configuration files with sensitive data
+config/local.json
+config/secrets.json
+config/production.json
+.env.local
+.env.production
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache directories
+.cache/
+cache/
+__pycache__/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Session files
+sessions/
+*.session
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# =============================================================================
+# Development and Testing
+# =============================================================================
+
+# Test artifacts
+test_results/
+test_output/
+.pytest_cache/
+
+# Coverage reports
+htmlcov/
+.coverage
+coverage.xml
+
+# Documentation builds
+docs/_build/
+docs/build/
+
+# =============================================================================
+# Deployment and CI/CD
+# =============================================================================
+
+# Docker
+Dockerfile.local
+docker-compose.override.yml
+.dockerignore
+
+# Kubernetes
+*.kubeconfig
+
+# CI/CD
+.github/workflows/local/
+.circleci/local/
+
+# =============================================================================
+# Hardware and Device Files
+# =============================================================================
+
+# GPIO state files
+gpio_state.json
+*.gpio
+
+# Device configuration backups
+device_config_backup.json
+
+# Hardware calibration files
+calibration.json
+*.cal
+
+# =============================================================================
+# Security and Privacy
+# =============================================================================
+
+# API keys and secrets
+secrets.json
+api_keys.json
+*.key
+*.pem
+*.p12
+*.pfx
+
+# SSL certificates
+*.crt
+*.cert
+*.pem
+
+# =============================================================================
+# Performance and Monitoring
+# =============================================================================
+
+# Performance profiling
+*.prof
+*.profile
+
+# Memory dumps
+*.dump
+*.dmp
+
+# System monitoring
+system_stats.json
+performance_logs/
+
+# =============================================================================
+# Backup and Archive
+# =============================================================================
+
+# Archive files
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.rar
+*.7z
+
+# Backup directories
+backup/
+backups/
+*.backup/
+
+# =============================================================================
+# End of .gitignore
+# =============================================================================

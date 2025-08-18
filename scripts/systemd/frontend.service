@@ -1,0 +1,15 @@
+[Unit]
+Description=Character Booth Frontend (Booth) Service
+After=network.target sound.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Phone-Booth
+ExecStart=/usr/bin/env bash frontend/run_frontend.sh
+Restart=on-failure
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
+
+
