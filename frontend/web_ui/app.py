@@ -131,7 +131,7 @@ def hangup_phone():
 
 @app.route('/api/speak', methods=['POST'])
 def speak():
-    """Simulate speaking into the phone."""
+    """Ultra-fast speaking endpoint optimized for real-time performance."""
     try:
         if not state_manager.session:
             return jsonify({
@@ -150,25 +150,15 @@ def speak():
         personality = data.get('personality', state_manager.session.personality)
         mode = data.get('mode', state_manager.session.mode)
         
-        # Transition to listening state
-        state_manager.transition_to(BoothState.LISTENING)
-        
-        # Capture scene (simulated)
-        scene = SceneInfo.create(
-            caption="Web interface simulation",
-            tags=["web", "simulation", "desktop"]
-        )
-        state_manager.update_scene(scene)
-        
         # Transition to processing
         state_manager.transition_to(BoothState.PROCESSING)
         
-        # Generate response from backend
+        # Generate response from backend (this is the main bottleneck)
         start_time = time.time()
         response = backend_client.generate_response(
             session=state_manager.session,
             user_text=user_message,
-            scene=scene,
+            scene=None,  # Skip scene processing
             personality=personality,
             mode=mode
         )
@@ -177,14 +167,14 @@ def speak():
         # Extract response
         assistant_text = response.get('text', 'Sorry, I could not generate a response.')
         
-        # Synthesize speech
+        # Ultra-fast TTS synthesis
         audio_data, tts_metadata = tts_manager.synthesize(assistant_text, personality)
         
         # Create conversation turn
         turn = ConversationTurn.create(
             user_text=user_message,
             assistant_text=assistant_text,
-            scene=scene,
+            scene=None,  # Skip scene
             processing_time=processing_time
         )
         state_manager.add_conversation_turn(turn)
@@ -192,8 +182,19 @@ def speak():
         # Transition to speaking
         state_manager.transition_to(BoothState.SPEAKING)
         
-        # Get amplitude envelope for lighting simulation
+        # Ultra-fast amplitude envelope
         amplitude_envelope = tts_manager.get_amplitude_envelope(audio_data)
+        
+        # Store audio data (simplified)
+        if not hasattr(state_manager, '_audio_cache'):
+            state_manager._audio_cache = {}
+        
+        audio_id = f"{state_manager.session.session_id}_{int(time.time())}"
+        state_manager._audio_cache[audio_id] = {
+            'audio_data': audio_data,
+            'metadata': tts_metadata,
+            'timestamp': time.time()
+        }
         
         return jsonify({
             'success': True,
@@ -202,6 +203,7 @@ def speak():
             'processing_time': processing_time,
             'audio_duration': tts_metadata.get('duration', 0),
             'amplitude_envelope': amplitude_envelope,
+            'audio_id': audio_id,
             'session_id': state_manager.session.session_id
         })
         
@@ -241,17 +243,90 @@ def get_conversation():
 
 @app.route('/api/personalities')
 def get_personalities():
-    """Get available personalities."""
+    """Get available personalities with TTS settings."""
+    personality_settings = tts_manager.get_all_personality_settings()
+    
+    personalities = [
+        {
+            'id': 'trickster', 
+            'name': 'The Trickster', 
+            'description': 'Playful and mischievous',
+            'tts_settings': personality_settings.get('trickster', {})
+        },
+        {
+            'id': 'sage', 
+            'name': 'The Sage', 
+            'description': 'Wise and contemplative',
+            'tts_settings': personality_settings.get('sage', {})
+        },
+        {
+            'id': 'muse', 
+            'name': 'The Muse', 
+            'description': 'Creative and inspiring',
+            'tts_settings': personality_settings.get('muse', {})
+        },
+        {
+            'id': 'jester', 
+            'name': 'The Jester', 
+            'description': 'Humorous and entertaining',
+            'tts_settings': personality_settings.get('jester', {})
+        },
+        {
+            'id': 'night_watch', 
+            'name': 'The Night Watch', 
+            'description': 'Mysterious and vigilant',
+            'tts_settings': personality_settings.get('night_watch', {})
+        }
+    ]
+    
     return jsonify({
-        'personalities': [
-            {'id': 'trickster', 'name': 'The Trickster', 'description': 'Playful and mischievous'},
-            {'id': 'sage', 'name': 'The Sage', 'description': 'Wise and contemplative'},
-            {'id': 'muse', 'name': 'The Muse', 'description': 'Creative and inspiring'},
-            {'id': 'jester', 'name': 'The Jester', 'description': 'Humorous and entertaining'},
-            {'id': 'night_watch', 'name': 'The Night Watch', 'description': 'Mysterious and vigilant'}
-        ],
-        'modes': config.modes
+        'personalities': personalities,
+        'modes': config.modes,
+        'default_tts_settings': config.tts.get("default_settings", {})
     })
+
+
+@app.route('/api/tts/settings/<personality>')
+def get_tts_settings(personality):
+    """Get TTS settings for a specific personality."""
+    try:
+        settings = tts_manager.get_personality_settings(personality)
+        return jsonify({
+            'success': True,
+            'personality': personality,
+            'settings': settings
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/tts/settings/<personality>', methods=['POST'])
+def update_tts_settings(personality):
+    """Update TTS settings for a specific personality."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No settings provided'
+            }), 400
+        
+        # This would require updating the config file
+        # For now, return success but note that config changes require restart
+        return jsonify({
+            'success': True,
+            'message': f'TTS settings for {personality} would be updated. Config changes require restart.',
+            'note': 'To permanently save settings, edit config/frontend.json and restart the application.'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 
 @app.route('/api/audio/devices')
@@ -358,6 +433,126 @@ def update_audio_config():
                 'error': 'Failed to update audio configuration'
             }), 500
             
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/models')
+def get_models():
+    """Get available models and current model."""
+    try:
+        response = backend_client.get_models()
+        return jsonify(response)
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/models/switch', methods=['POST'])
+def switch_model():
+    """Switch to a different model."""
+    try:
+        data = request.get_json()
+        if not data or 'model_name' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Model name is required'
+            }), 400
+        
+        model_name = data['model_name']
+        response = backend_client.switch_model(model_name)
+        return jsonify(response)
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/models/current')
+def get_current_model():
+    """Get current model information."""
+    try:
+        response = backend_client.get_current_model()
+        return jsonify(response)
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/audio/<audio_id>')
+def get_audio(audio_id):
+    """Get audio data for playback."""
+    try:
+        if not hasattr(state_manager, '_audio_cache'):
+            print(f"Audio cache not found for {audio_id}")
+            return jsonify({'error': 'No audio cache found'}), 404
+        
+        audio_data = state_manager._audio_cache.get(audio_id)
+        if not audio_data:
+            print(f"Audio data not found for {audio_id}")
+            return jsonify({'error': 'Audio not found'}), 404
+        
+        print(f"Serving audio {audio_id}, size: {len(audio_data['audio_data'])} bytes")
+        
+        # Clean up old audio data (older than 5 minutes for more aggressive cleanup)
+        current_time = time.time()
+        state_manager._audio_cache = {
+            k: v for k, v in state_manager._audio_cache.items()
+            if current_time - v['timestamp'] < 300  # 5 minutes instead of 1 hour
+        }
+        
+        from flask import Response
+        
+        # Don't delete immediately - let the browser cache it
+        # del state_manager._audio_cache[audio_id]
+        
+        return Response(
+            audio_data['audio_data'],
+            mimetype='audio/wav',
+            headers={
+                'Content-Disposition': f'attachment; filename=speech_{audio_id}.wav',
+                'Cache-Control': 'no-cache'
+            }
+        )
+        
+    except Exception as e:
+        print(f"Error serving audio {audio_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/audio/play/<audio_id>')
+def test_audio_playback(audio_id):
+    """Test if audio is available for playback."""
+    try:
+        if not hasattr(state_manager, '_audio_cache'):
+            return jsonify({
+                'success': False,
+                'error': 'No audio cache found'
+            }), 404
+        
+        audio_data = state_manager._audio_cache.get(audio_id)
+        if not audio_data:
+            return jsonify({
+                'success': False,
+                'error': 'Audio not found'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'audio_id': audio_id,
+            'size_bytes': len(audio_data['audio_data']),
+            'timestamp': audio_data['timestamp'],
+            'metadata': audio_data['metadata']
+        })
+        
     except Exception as e:
         return jsonify({
             'success': False,

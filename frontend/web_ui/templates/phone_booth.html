@@ -345,6 +345,88 @@
             margin: 10px 0;
             border-radius: 5px;
         }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.5em;
+        }
+
+        .close {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            opacity: 0.7;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            color: white;
+        }
+
+        .btn-info:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(23, 162, 184, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(108, 117, 125, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -381,6 +463,23 @@
             </div>
 
             <div class="control-section">
+                <h3>🤖 AI Model Selection</h3>
+                <div class="form-group">
+                    <label for="modelSelect">Current Model:</label>
+                    <select id="modelSelect" onchange="switchModel()">
+                        <option value="">Loading models...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Engine Type:</label>
+                    <div id="engineType" style="padding: 8px; background: #f8f9fa; border-radius: 4px; font-size: 0.9em;">
+                        Loading...
+                    </div>
+                </div>
+                <button class="btn btn-info" onclick="refreshModels()" style="margin-top: 5px;">🔄 Refresh Models</button>
+            </div>
+
+            <div class="control-section">
                 <h3>💬 Speak</h3>
                 <div class="form-group">
                     <label for="message">Your Message:</label>
@@ -407,6 +506,24 @@
                 <button class="btn" style="margin-top: 5px; padding: 5px 10px; font-size: 12px;" onclick="testOutputDevice()">Test</button>
             </div>
             <button class="btn btn-primary" onclick="saveAudioConfig()" style="margin-top: 10px;">💾 Save Audio Settings</button>
+        </div>
+
+        <div class="control-section" style="margin-bottom: 20px;">
+            <h3>🎭 Voice Settings</h3>
+            <button class="btn btn-info" onclick="openTTSSettings()" style="margin-bottom: 10px;">⚙️ Configure Voice Settings</button>
+            <div id="currentVoiceSettings" style="font-size: 0.9em; color: #666;">
+                <strong>Current:</strong> <span id="currentPersonalityVoice">Loading...</span>
+            </div>
+        </div>
+
+        <div class="control-section" style="margin-bottom: 20px;">
+            <h3>🔊 Audio Test</h3>
+            <div class="form-group">
+                <label for="testAudioId">Audio ID:</label>
+                <input type="text" id="testAudioId" placeholder="Enter audio ID to test" style="width: 100%; margin-bottom: 10px;">
+                <button class="btn btn-primary" onclick="testAudioPlayback()">🎵 Test Audio Playback</button>
+            </div>
+            <div id="audioTestStatus" style="font-size: 0.9em; color: #666; margin-top: 10px;"></div>
         </div>
 
         <div class="lighting-simulation">
@@ -444,6 +561,70 @@
         </div>
 
         <div id="messages"></div>
+    </div>
+
+    <!-- TTS Settings Modal -->
+    <div id="ttsSettingsModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>🎭 Voice Settings</h3>
+                <span class="close" onclick="closeTTSSettings()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h4>Personality Voice Configuration</h4>
+                    <div class="form-group">
+                        <label for="ttsPersonalitySelect">Select Personality:</label>
+                        <select id="ttsPersonalitySelect" onchange="loadPersonalitySettings()">
+                            <option value="trickster">The Trickster</option>
+                            <option value="sage">The Sage</option>
+                            <option value="muse">The Muse</option>
+                            <option value="jester">The Jester</option>
+                            <option value="night_watch">The Night Watch</option>
+                        </select>
+                    </div>
+                    
+                    <div class="voice-parameters">
+                        <div class="form-group">
+                            <label for="speedPrompt">Speed Prompt:</label>
+                            <select id="speedPrompt">
+                                <option value="[speed_1]">Very Slow</option>
+                                <option value="[speed_2]">Slow</option>
+                                <option value="[speed_3]">Moderate-Slow</option>
+                                <option value="[speed_4]">Moderate</option>
+                                <option value="[speed_5]">Normal</option>
+                                <option value="[speed_6]">Moderate-Fast</option>
+                                <option value="[speed_7]">Fast</option>
+                                <option value="[speed_8]">Very Fast</option>
+                                <option value="[speed_9]">Extremely Fast</option>
+                                <option value="[speed_10]">Maximum Speed</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="temperature">Temperature (Creativity): <span id="temperatureValue">0.3</span></label>
+                            <input type="range" id="temperature" min="0.1" max="1.0" step="0.1" value="0.3" oninput="updateTemperatureValue()">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="topP">Top P (Diversity): <span id="topPValue">0.7</span></label>
+                            <input type="range" id="topP" min="0.1" max="1.0" step="0.1" value="0.7" oninput="updateTopPValue()">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="repetitionPenalty">Repetition Penalty: <span id="repetitionPenaltyValue">1.05</span></label>
+                            <input type="range" id="repetitionPenalty" min="1.0" max="1.2" step="0.01" value="1.05" oninput="updateRepetitionPenaltyValue()">
+                        </div>
+                    </div>
+                    
+                    <div class="settings-actions" style="margin-top: 20px;">
+                        <button class="btn btn-primary" onclick="saveTTSSettings()">💾 Save Settings</button>
+                        <button class="btn btn-secondary" onclick="resetTTSSettings()">🔄 Reset to Default</button>
+                        <button class="btn btn-success" onclick="testVoice()">🎤 Test Voice</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -608,6 +789,11 @@
                     // Animate lighting
                     animateLighting(data.amplitude_envelope);
                     
+                    // Play audio if available
+                    if (data.audio_id) {
+                        playAudio(data.audio_id);
+                    }
+                    
                     // Clear input
                     document.getElementById('message').value = '';
                     
@@ -714,6 +900,51 @@
             const lightBulb = document.getElementById('lightBulb');
             lightBulb.classList.remove('active');
             lightBulb.style.boxShadow = '0 0 20px rgba(255, 255, 255, 0.1)';
+        }
+
+        // Play audio
+        function playAudio(audioId) {
+            try {
+                console.log(`Attempting to play audio: ${audioId}`);
+                const audioUrl = `/api/audio/${audioId}`;
+                console.log(`Audio URL: ${audioUrl}`);
+                
+                const audio = new Audio(audioUrl);
+                
+                audio.onloadstart = function() {
+                    console.log('Loading audio...');
+                };
+                
+                audio.oncanplay = function() {
+                    console.log('Audio ready to play');
+                    // Try to play with user interaction context
+                    audio.play().then(() => {
+                        console.log('Audio playback started successfully');
+                    }).catch(e => {
+                        console.error('Failed to play audio:', e);
+                        // Show a message to the user about autoplay
+                        showMessage('Audio ready! Click to play.', 'info');
+                    });
+                };
+                
+                audio.onerror = function(e) {
+                    console.error('Audio error:', e);
+                    showMessage('Audio playback error', 'error');
+                };
+                
+                audio.onended = function() {
+                    console.log('Audio playback finished');
+                };
+                
+                // Add click handler to manually play audio if autoplay fails
+                audio.onclick = function() {
+                    audio.play().catch(e => console.error('Manual play failed:', e));
+                };
+                
+            } catch (error) {
+                console.error('Error playing audio:', error);
+                showMessage('Audio playback error: ' + error.message, 'error');
+            }
         }
 
         // Update status
@@ -923,12 +1154,282 @@
             }
         }
 
+        // TTS Settings Functions
+        function openTTSSettings() {
+            document.getElementById('ttsSettingsModal').style.display = 'block';
+            loadPersonalitySettings();
+        }
+
+        function closeTTSSettings() {
+            document.getElementById('ttsSettingsModal').style.display = 'none';
+        }
+
+        async function loadPersonalitySettings() {
+            try {
+                const personality = document.getElementById('ttsPersonalitySelect').value;
+                const response = await fetch(`/api/tts/settings/${personality}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const settings = data.settings;
+                    
+                    // Update form values
+                    document.getElementById('speedPrompt').value = settings.prompt || '[speed_5]';
+                    document.getElementById('temperature').value = settings.temperature || 0.3;
+                    document.getElementById('topP').value = settings.top_P || 0.7;
+                    document.getElementById('repetitionPenalty').value = settings.repetition_penalty || 1.05;
+                    
+                    // Update display values
+                    updateTemperatureValue();
+                    updateTopPValue();
+                    updateRepetitionPenaltyValue();
+                    
+                    // Update current voice display
+                    updateCurrentVoiceDisplay(personality, settings);
+                }
+            } catch (error) {
+                console.error('Failed to load personality settings:', error);
+                showMessage('Failed to load voice settings', 'error');
+            }
+        }
+
+        function updateTemperatureValue() {
+            const value = document.getElementById('temperature').value;
+            document.getElementById('temperatureValue').textContent = value;
+        }
+
+        function updateTopPValue() {
+            const value = document.getElementById('topP').value;
+            document.getElementById('topPValue').textContent = value;
+        }
+
+        function updateRepetitionPenaltyValue() {
+            const value = document.getElementById('repetitionPenalty').value;
+            document.getElementById('repetitionPenaltyValue').textContent = value;
+        }
+
+        async function saveTTSSettings() {
+            try {
+                const personality = document.getElementById('ttsPersonalitySelect').value;
+                const settings = {
+                    prompt: document.getElementById('speedPrompt').value,
+                    temperature: parseFloat(document.getElementById('temperature').value),
+                    top_P: parseFloat(document.getElementById('topP').value),
+                    repetition_penalty: parseFloat(document.getElementById('repetitionPenalty').value)
+                };
+                
+                const response = await fetch(`/api/tts/settings/${personality}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(settings)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage(result.message, 'success');
+                    updateCurrentVoiceDisplay(personality, settings);
+                } else {
+                    showMessage('Failed to save settings: ' + result.error, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Failed to save TTS settings:', error);
+                showMessage('Failed to save voice settings', 'error');
+            }
+        }
+
+        function resetTTSSettings() {
+            // Reset to default values
+            document.getElementById('speedPrompt').value = '[speed_5]';
+            document.getElementById('temperature').value = 0.3;
+            document.getElementById('topP').value = 0.7;
+            document.getElementById('repetitionPenalty').value = 1.05;
+            
+            updateTemperatureValue();
+            updateTopPValue();
+            updateRepetitionPenaltyValue();
+            
+            showMessage('Settings reset to default values', 'info');
+        }
+
+        async function testVoice() {
+            try {
+                const personality = document.getElementById('ttsPersonalitySelect').value;
+                const testMessage = "Hello! This is a test of the voice settings for this personality.";
+                
+                showMessage('Testing voice...', 'info');
+                
+                const response = await fetch('/api/speak', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: testMessage,
+                        personality: personality,
+                        mode: 'chat'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('Voice test completed! Check the conversation for the result.', 'success');
+                    
+                    // Play the audio if available
+                    if (data.audio_id) {
+                        playAudio(data.audio_id);
+                    }
+                } else {
+                    showMessage('Voice test failed: ' + data.error, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Failed to test voice:', error);
+                showMessage('Failed to test voice', 'error');
+            }
+        }
+
+        function updateCurrentVoiceDisplay(personality, settings) {
+            const display = document.getElementById('currentPersonalityVoice');
+            const speedText = settings.prompt ? settings.prompt.replace('[speed_', '').replace(']', '') : '5';
+            display.textContent = `${personality} (Speed: ${speedText}, Temp: ${settings.temperature}, Top-P: ${settings.top_P})`;
+        }
+
+        // Load initial voice settings
+        async function loadInitialVoiceSettings() {
+            try {
+                const response = await fetch('/api/personalities');
+                const data = await response.json();
+                
+                if (data.personalities && data.personalities.length > 0) {
+                    const currentPersonality = document.getElementById('personality').value;
+                    const personality = data.personalities.find(p => p.id === currentPersonality);
+                    
+                    if (personality && personality.tts_settings) {
+                        updateCurrentVoiceDisplay(currentPersonality, personality.tts_settings);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load initial voice settings:', error);
+            }
+        }
+
+        // Model Management Functions
+        async function loadModels() {
+            try {
+                const response = await fetch('/api/models');
+                const data = await response.json();
+                
+                const modelSelect = document.getElementById('modelSelect');
+                const engineType = document.getElementById('engineType');
+                
+                // Clear existing options
+                modelSelect.innerHTML = '';
+                
+                if (data.models && data.models.length > 0) {
+                    data.models.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model;
+                        option.textContent = model;
+                        if (model === data.current_model) {
+                            option.selected = true;
+                        }
+                        modelSelect.appendChild(option);
+                    });
+                } else {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No models available';
+                    modelSelect.appendChild(option);
+                }
+                
+                // Update engine type display
+                engineType.textContent = data.engine_type || 'Unknown';
+                
+            } catch (error) {
+                console.error('Failed to load models:', error);
+                const modelSelect = document.getElementById('modelSelect');
+                modelSelect.innerHTML = '<option value="">Failed to load models</option>';
+            }
+        }
+
+        async function switchModel() {
+            const modelSelect = document.getElementById('modelSelect');
+            const selectedModel = modelSelect.value;
+            
+            if (!selectedModel) {
+                return;
+            }
+            
+            try {
+                showMessage(`Switching to model: ${selectedModel}...`, 'info');
+                
+                const response = await fetch('/api/models/switch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model_name: selectedModel
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(`Successfully switched to ${selectedModel}`, 'success');
+                } else {
+                    showMessage(`Failed to switch model: ${data.error}`, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Failed to switch model:', error);
+                showMessage('Failed to switch model: ' + error.message, 'error');
+            }
+        }
+
+        async function refreshModels() {
+            showMessage('Refreshing models...', 'info');
+            await loadModels();
+            showMessage('Models refreshed', 'success');
+        }
+
+        // Audio Test Functions
+        async function testAudioPlayback() {
+            const audioId = document.getElementById('testAudioId').value.trim();
+            if (!audioId) {
+                showMessage('Please enter an audio ID to test.', 'warning');
+                return;
+            }
+
+            try {
+                showMessage(`Attempting to play audio with ID: ${audioId}...`, 'info');
+                const response = await fetch(`/api/audio/play/${audioId}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage(`Audio with ID ${audioId} is ready for playback. Click the "🎵 Test Audio Playback" button to play.`, 'success');
+                } else {
+                    showMessage(`Audio with ID ${audioId} not found or not ready for playback.`, 'error');
+                }
+            } catch (error) {
+                console.error('Failed to test audio playback:', error);
+                showMessage('Failed to test audio playback: ' + error.message, 'error');
+            }
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             initSocket();
             updateStatus();
             loadAudioDevices(); // Load audio devices
             loadConversation(); // Load conversation history
+            loadInitialVoiceSettings(); // Load voice settings
+            loadModels(); // Load available models
             
             // Update status every 5 seconds
             setInterval(updateStatus, 5000);

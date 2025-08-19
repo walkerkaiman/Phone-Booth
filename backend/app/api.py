@@ -22,6 +22,9 @@ from .models.schemas import (
 	SessionReleaseResponse,
 	SessionStartRequest,
 	SessionStartResponse,
+	ModelListResponse,
+	ModelSwitchRequest,
+	ModelSwitchResponse,
 )
 from .personas.loader import load_personas
 from .sessions.models import Session, Turn, truncate_history
@@ -118,6 +121,18 @@ def generate(
 	if mode:
 		system_prompt = f"{system_prompt}\n\n[MODE={mode}]"
 
+	# Debug: Log the messages being sent to LLM
+	print(f"=== LLM DEBUG ===")
+	print(f"Session ID: {session.session_id}")
+	print(f"Personality: {personality}")
+	print(f"Mode: {mode}")
+	print(f"System Prompt: {system_prompt[:200]}...")
+	print(f"Messages being sent to LLM:")
+	for i, msg in enumerate(messages):
+		print(f"  {i}: {msg['role']}: {msg['content'][:100]}...")
+	print(f"User Text: {request.user_text}")
+	print(f"==================")
+
 	# Get generation parameters from config
 	llm_config = config.llm
 	text, usage = engine.generate(
@@ -148,6 +163,66 @@ def session_release(request: SessionReleaseRequest, store: SessionStore = Depend
 		raise HTTPException(status_code=400, detail="Invalid session_id") from exc
 	store.release(session_uuid)
 	return SessionReleaseResponse(ok=True)
+
+
+@router.get("/models", response_model=ModelListResponse)
+def list_models(engine: LanguageModelEngine = Depends(get_engine)):
+	"""List available models."""
+	try:
+		if hasattr(engine, 'get_available_models'):
+			models = engine.get_available_models()
+			current_model = getattr(engine, 'model_name', 'unknown')
+			return ModelListResponse(
+				models=models,
+				current_model=current_model,
+				engine_type=config.llm.get("engine", "unknown")
+			)
+		else:
+			# For non-Ollama engines, return basic info
+			return ModelListResponse(
+				models=[],
+				current_model=getattr(engine, 'model_name', 'unknown'),
+				engine_type=config.llm.get("engine", "unknown")
+			)
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=f"Failed to list models: {str(e)}")
+
+
+@router.post("/models/switch", response_model=ModelSwitchResponse)
+def switch_model(
+	request: ModelSwitchRequest,
+	engine: LanguageModelEngine = Depends(get_engine)
+):
+	"""Switch to a different model."""
+	try:
+		if hasattr(engine, 'set_model'):
+			engine.set_model(request.model_name)
+			return ModelSwitchResponse(
+				success=True,
+				model_name=request.model_name,
+				message=f"Switched to model: {request.model_name}"
+			)
+		else:
+			raise HTTPException(
+				status_code=400,
+				detail="Current engine does not support model switching"
+			)
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=f"Failed to switch model: {str(e)}")
+
+
+@router.get("/models/current")
+def get_current_model(engine: LanguageModelEngine = Depends(get_engine)):
+	"""Get current model information."""
+	try:
+		current_model = getattr(engine, 'model_name', 'unknown')
+		engine_type = config.llm.get("engine", "unknown")
+		return {
+			"current_model": current_model,
+			"engine_type": engine_type
+		}
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=f"Failed to get current model: {str(e)}")
 
 
 

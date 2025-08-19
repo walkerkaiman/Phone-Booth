@@ -46,6 +46,31 @@ class OllamaProxyEngine(LanguageModelEngine):
         
         logger.info(f"Initialized Ollama proxy engine with model: {self.model_name}")
     
+    def set_model(self, model_name: str) -> None:
+        """Change the model being used for generation.
+        
+        Args:
+            model_name: The new model name (e.g., "phi3:mini")
+        """
+        self.model_name = model_name
+        logger.info(f"Switched Ollama model to: {self.model_name}")
+    
+    def get_available_models(self) -> list[str]:
+        """Get list of available models from Ollama server.
+        
+        Returns:
+            List of available model names
+        """
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                response = client.get(f"{self.base_url}/api/tags")
+                response.raise_for_status()
+                data = response.json()
+                return [model["name"] for model in data.get("models", [])]
+        except Exception as e:
+            logger.error(f"Failed to get available models: {e}")
+            return []
+    
     def generate(
         self,
         system_prompt: str,
@@ -53,6 +78,7 @@ class OllamaProxyEngine(LanguageModelEngine):
         max_tokens: int = 180,
         temperature: float = 0.8,
         top_p: float = 0.9,
+        model_name: str = None,  # Allow per-request model override
     ) -> Tuple[str, dict]:
         """Generate text using Ollama API.
         
@@ -62,10 +88,14 @@ class OllamaProxyEngine(LanguageModelEngine):
             max_tokens: Maximum tokens to generate
             temperature: Sampling temperature
             top_p: Top-p sampling parameter
+            model_name: Optional model override for this request
             
         Returns:
             Tuple of (generated_text, usage_dict)
         """
+        # Use provided model or fall back to instance model
+        request_model = model_name or self.model_name
+        
         try:
             # Build the full prompt from system prompt and messages
             prompt_parts = [system_prompt]
@@ -81,7 +111,7 @@ class OllamaProxyEngine(LanguageModelEngine):
             
             # Prepare the request payload
             payload = {
-                "model": self.model_name,
+                "model": request_model,
                 "prompt": full_prompt,
                 "stream": False,
                 "options": {

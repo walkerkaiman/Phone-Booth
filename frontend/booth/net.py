@@ -152,6 +152,43 @@ class BackendClient:
             print(f"Failed to release session {session_id}: {e}")
             return False
     
+    def get_models(self) -> Dict[str, Any]:
+        """Get available models and current model."""
+        try:
+            response = self._make_request("GET", "/v1/models")
+            return response
+        except BackendError as e:
+            print(f"Failed to get models: {e}")
+            return {
+                "models": [],
+                "current_model": "unknown",
+                "engine_type": "unknown"
+            }
+    
+    def switch_model(self, model_name: str) -> Dict[str, Any]:
+        """Switch to a different model."""
+        data = {"model_name": model_name}
+        
+        try:
+            response = self._make_request("POST", "/v1/models/switch", data)
+            print(f"Switched to model: {model_name}")
+            return response
+        except BackendError as e:
+            print(f"Failed to switch model to {model_name}: {e}")
+            raise
+    
+    def get_current_model(self) -> Dict[str, Any]:
+        """Get current model information."""
+        try:
+            response = self._make_request("GET", "/v1/models/current")
+            return response
+        except BackendError as e:
+            print(f"Failed to get current model: {e}")
+            return {
+                "current_model": "unknown",
+                "engine_type": "unknown"
+            }
+    
     def close(self) -> None:
         """Close the HTTP client."""
         self.client.close()

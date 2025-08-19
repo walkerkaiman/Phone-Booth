@@ -12,12 +12,64 @@
 		"compute_type": "int8"
 	},
 	"tts": {
+		"sample_rate": 16000,
+		"speed": 1.2,
+		"engine": "pyttsx3",
 		"voice_map": {
-			"trickster": "en_US-lessac-high",
-			"sage": "en_GB-alan-medium",
-			"muse": "en_US-lessac-high",
-			"jester": "en_GB-alan-medium",
-			"night_watch": "en_US-lessac-high"
+			"trickster": "pyttsx3_default",
+			"sage": "pyttsx3_default",
+			"muse": "pyttsx3_default",
+			"jester": "pyttsx3_default",
+			"night_watch": "pyttsx3_default"
+		},
+		"personality_settings": {
+			"trickster": {
+				"prompt": "[speed_8]",
+				"temperature": 0.4,
+				"top_P": 0.8,
+				"repetition_penalty": 1.05,
+				"description": "Energetic and playful voice"
+			},
+			"sage": {
+				"prompt": "[speed_6]",
+				"temperature": 0.2,
+				"top_P": 0.7,
+				"repetition_penalty": 1.02,
+				"description": "Wise and contemplative voice"
+			},
+			"muse": {
+				"prompt": "[speed_7]",
+				"temperature": 0.3,
+				"top_P": 0.75,
+				"repetition_penalty": 1.03,
+				"description": "Creative and inspiring voice"
+			},
+			"jester": {
+				"prompt": "[speed_9]",
+				"temperature": 0.5,
+				"top_P": 0.8,
+				"repetition_penalty": 1.08,
+				"description": "Fast, humorous, and entertaining voice"
+			},
+			"night_watch": {
+				"prompt": "[speed_7]",
+				"temperature": 0.25,
+				"top_P": 0.6,
+				"repetition_penalty": 1.01,
+				"description": "Mysterious and vigilant voice"
+			}
+		},
+		"default_settings": {
+			"prompt": "[speed_5]",
+			"temperature": 0.3,
+			"top_P": 0.7,
+			"top_K": 20,
+			"repetition_penalty": 1.05,
+			"max_new_token": 2048,
+			"min_new_token": 0,
+			"stream_batch": 24,
+			"stream_speed": 12000,
+			"pass_first_n_batches": 2
 		}
 	},
 	"lighting": {

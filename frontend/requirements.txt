@@ -5,8 +5,8 @@ pyaudio
 webrtcvad
 ctranslate2
 faster-whisper
-piper-tts
 opencv-python
 requests
+pyttsx3
 
 

@@ -9,14 +9,21 @@ echo   Phone Booth System - Starting...
 echo ========================================
 echo.
 
-REM Check if we're in a virtual environment
+REM Check if we're in a virtual environment and activate if needed
 if not defined VIRTUAL_ENV (
-    echo WARNING: Virtual environment not detected!
-    echo Please activate your virtual environment first:
-    echo   .venv\Scripts\activate
-    echo.
-    pause
-    exit /b 1
+    echo Virtual environment not detected. Activating .venv...
+    if exist ".venv\Scripts\activate.bat" (
+        call .venv\Scripts\activate.bat
+        echo Virtual environment activated successfully!
+    ) else (
+        echo ERROR: Virtual environment not found at .venv\Scripts\activate.bat
+        echo Please ensure the virtual environment is properly set up.
+        echo.
+        pause
+        exit /b 1
+    )
+) else (
+    echo Virtual environment already active: %VIRTUAL_ENV%
 )
 
 REM Change to project root directory

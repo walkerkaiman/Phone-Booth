@@ -41,7 +41,11 @@ class Config:
     """Configuration manager for the backend service."""
     
     def __init__(self, config_path: str | Path | None = None):
-        self.config_path = Path(config_path) if config_path else Path("config/backend.json")
+        if config_path:
+            self.config_path = Path(config_path)
+        else:
+            # Look for config in parent directory (project root)
+            self.config_path = Path(__file__).parent.parent.parent / "config" / "backend.json"
         self._config = self._load_config()
     
     def _load_config(self) -> Dict[str, Any]:
