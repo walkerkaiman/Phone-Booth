@@ -66,7 +66,7 @@ class EdgeTTSEngine:
                 temp_filename = temp_file.name
             
             try:
-                # Use edge-tts command line tool with correct format
+                # Use edge-tts command line tool (generates WAV by default)
                 cmd = [
                     "python", "-m", "edge_tts",
                     "--voice", voice,

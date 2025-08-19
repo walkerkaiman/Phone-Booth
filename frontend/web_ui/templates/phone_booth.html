@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phone Booth Simulator</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <title>Phone Booth Dashboard</title>
     <style>
         * {
             margin: 0;
@@ -15,338 +14,366 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
+            color: #333;
+            height: 100vh;
+            overflow: hidden;
         }
 
-        .phone-booth {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-            padding: 30px;
-            max-width: 800px;
-            width: 100%;
-            backdrop-filter: blur(10px);
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 15px;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto 1fr auto;
+            gap: 15px;
+            overflow: hidden;
         }
 
         .header {
+            grid-column: 1 / -1;
             text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .header h1 {
-            color: #333;
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .status-indicator {
-            display: inline-block;
-            padding: 8px 16px;
-            border-radius: 20px;
+            color: white;
+            font-size: 2em;
             font-weight: bold;
-            text-transform: uppercase;
-            font-size: 0.9em;
-            letter-spacing: 1px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 10px;
         }
 
-        .status-idle { background: #e0e0e0; color: #666; }
-        .status-pickup { background: #4CAF50; color: white; }
-        .status-listening { background: #2196F3; color: white; }
-        .status-processing { background: #FF9800; color: white; }
-        .status-speaking { background: #9C27B0; color: white; }
-        .status-hangup { background: #F44336; color: white; }
-        .status-error { background: #F44336; color: white; }
-
-        .controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .control-section {
-            background: #f8f9fa;
-            padding: 20px;
+        .control-panel {
+            background: white;
             border-radius: 15px;
-            border: 2px solid #e9ecef;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-height: 100%;
+            overflow-y: auto;
         }
 
-        .control-section h3 {
-            color: #495057;
+        .status-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #007bff;
+        }
+
+        .status-section h3 {
+            color: #007bff;
             margin-bottom: 15px;
             font-size: 1.2em;
         }
 
-        .form-group {
-            margin-bottom: 15px;
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
         }
 
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #495057;
-            font-weight: 500;
-        }
-
-        .form-group select,
-        .form-group input,
-        .form-group textarea {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #dee2e6;
+        .status-item {
+            background: white;
+            padding: 15px;
             border-radius: 8px;
-            font-size: 14px;
-            transition: border-color 0.3s ease;
+            border: 1px solid #e9ecef;
         }
 
-        .form-group select:focus,
-        .form-group input:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: #667eea;
+        .status-label {
+            font-weight: bold;
+            color: #495057;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .status-value {
+            color: #212529;
+            font-size: 1.1em;
+        }
+
+        .phone-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
         }
 
         .btn {
             padding: 12px 24px;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
+            font-size: 1em;
+            font-weight: bold;
             cursor: pointer;
             transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            min-width: 140px;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #007bff;
             color: white;
         }
 
         .btn-primary:hover {
+            background: #0056b3;
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
 
         .btn-danger {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            background: #dc3545;
             color: white;
         }
 
         .btn-danger:hover {
+            background: #c82333;
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
         }
 
         .btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
-            transform: none !important;
+            transform: none;
         }
 
-        .conversation {
-            background: #f8f9fa;
+        .conversation-panel {
+            background: white;
             border-radius: 15px;
             padding: 20px;
-            max-height: 400px;
-            overflow-y: auto;
-            border: 2px solid #e9ecef;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            max-height: 100%;
         }
 
-        .conversation h3 {
-            color: #495057;
-            margin-bottom: 15px;
-            font-size: 1.2em;
+        .conversation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .conversation-header h3 {
+            color: #007bff;
+            font-size: 1.3em;
+        }
+
+        .conversation-container {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f8f9fa;
+            min-height: 200px;
+            max-height: 300px;
         }
 
         .message {
             margin-bottom: 15px;
-            padding: 15px;
-            border-radius: 10px;
-            position: relative;
+            padding: 12px;
+            border-radius: 8px;
+            max-width: 80%;
         }
 
         .message.user {
-            background: #e3f2fd;
-            border-left: 4px solid #2196F3;
-            margin-left: 20px;
+            background: #007bff;
+            color: white;
+            margin-left: auto;
         }
 
         .message.assistant {
-            background: #f3e5f5;
-            border-left: 4px solid #9C27B0;
-            margin-right: 20px;
+            background: #e9ecef;
+            color: #333;
+            margin-right: auto;
         }
 
         .message-header {
-            font-size: 0.9em;
-            color: #666;
+            font-size: 0.8em;
             margin-bottom: 5px;
+            opacity: 0.8;
         }
 
-        .message-text {
-            font-size: 1em;
-            line-height: 1.5;
-            color: #333;
+        .message-content {
+            font-size: 0.95em;
+            line-height: 1.4;
         }
 
         .message-meta {
-            font-size: 0.8em;
-            color: #999;
+            font-size: 0.75em;
             margin-top: 5px;
+            opacity: 0.7;
         }
 
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
+        .input-section {
             margin-top: 20px;
+            display: flex;
+            gap: 10px;
         }
 
-        .stat-card {
-            background: white;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        .input-section input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1em;
         }
 
-        .stat-value {
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #667eea;
+        .input-section input:focus {
+            outline: none;
+            border-color: #007bff;
         }
 
-        .stat-label {
-            font-size: 0.9em;
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .lighting-simulation {
-            background: #2c3e50;
-            border-radius: 10px;
-            padding: 20px;
-            margin-top: 20px;
-            text-align: center;
-        }
-
-        .lighting-simulation h3 {
+        .input-section button {
+            padding: 12px 20px;
+            background: #28a745;
             color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .input-section button:hover {
+            background: #218838;
+        }
+
+        .lighting-panel {
+            grid-column: 1 / -1;
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-height: 80px;
+        }
+
+        .lighting-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 15px;
         }
 
-        .light-bulb {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            margin: 0 auto;
-            background: #34495e;
-            transition: all 0.3s ease;
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        .lighting-header h3 {
+            color: #007bff;
+            font-size: 1.2em;
         }
 
-        .light-bulb.active {
-            background: #f1c40f;
-            box-shadow: 0 0 30px rgba(241, 196, 15, 0.8);
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            width: 40px;
+        .lighting-display {
             height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .error {
-            background: #ffebee;
-            color: #c62828;
-            padding: 15px;
+            background: #000;
             border-radius: 8px;
-            margin: 10px 0;
-            border-left: 4px solid #c62828;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
         }
 
-        .success {
-            background: #e8f5e8;
-            color: #2e7d32;
-            padding: 15px;
+        .light {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            margin: 0 3px;
+            transition: all 0.1s ease;
+        }
+
+        .light.off {
+            background: #333;
+        }
+
+        .light.on {
+            background: #ff6b6b;
+            box-shadow: 0 0 10px #ff6b6b;
+        }
+
+        .current-mode {
+            background: #e3f2fd;
+            padding: 10px 15px;
             border-radius: 8px;
-            margin: 10px 0;
-            border-left: 4px solid #2e7d32;
+            border: 2px solid #bbdefb;
+            font-weight: bold;
+            color: #1976d2;
+            text-align: center;
+            margin-bottom: 15px;
         }
 
-        @media (max-width: 768px) {
-            .controls {
-                grid-template-columns: 1fr;
-            }
-            
-            .phone-booth {
-                padding: 20px;
-            }
-            
-            .header h1 {
-                font-size: 2em;
-            }
+        .mode-icon {
+            margin-right: 8px;
         }
 
-        /* Message styles */
-        .success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-            padding: 10px;
-            margin: 10px 0;
+        .settings-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #6c757d;
+        }
+
+        .settings-section h3 {
+            color: #6c757d;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .setting-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .setting-item label {
+            font-weight: bold;
+            color: #495057;
+            font-size: 0.9em;
+        }
+
+        .settings-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #138496;
+            transform: translateY(-2px);
+        }
+
+        .setting-item select {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
             border-radius: 5px;
+            font-size: 0.9em;
         }
 
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 5px;
+        .setting-item select:focus {
+            outline: none;
+            border-color: #007bff;
         }
 
-        .warning {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeaa7;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 5px;
-        }
-
-        .info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 5px;
-        }
-
-        /* Modal styles */
+        /* Modal styles for TTS settings */
         .modal {
             display: none;
             position: fixed;
@@ -398,184 +425,91 @@
             padding: 20px;
         }
 
-        .btn-info {
-            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-            color: white;
+        .form-group {
+            margin-bottom: 15px;
         }
 
-        .btn-info:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(23, 162, 184, 0.4);
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #495057;
+            font-weight: 500;
         }
 
-        .btn-success {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: white;
+        .form-group select,
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
         }
 
-        .btn-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        .form-group select:focus,
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #007bff;
         }
 
-        .btn-secondary {
-            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(108, 117, 125, 0.4);
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto 1fr auto;
+            }
+            
+            .lighting-panel {
+                grid-column: 1;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="phone-booth">
+    <div class="container">
         <div class="header">
-            <h1>📞 Phone Booth Simulator</h1>
-            <div class="status-indicator" id="statusIndicator">Idle</div>
+            📞 Phone Booth Dashboard
         </div>
 
-        <div class="controls">
-            <div class="control-section">
-                <h3>🎭 Personality & Mode</h3>
-                <div class="form-group">
-                    <label for="personality">Personality:</label>
-                    <select id="personality">
-                        <option value="trickster">The Trickster</option>
-                        <option value="sage">The Sage</option>
-                        <option value="muse">The Muse</option>
-                        <option value="jester">The Jester</option>
-                        <option value="night_watch">The Night Watch</option>
-                    </select>
+        <div class="control-panel">
+            <div class="status-section">
+                <h3>🔧 System Status</h3>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <div class="status-label">Backend Status</div>
+                        <div class="status-value" id="backendStatus">Checking...</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">LLM Engine</div>
+                        <div class="status-value" id="llmEngine">Unknown</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">Current Model</div>
+                        <div class="status-value" id="currentModel">Unknown</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">Session Status</div>
+                        <div class="status-value" id="sessionStatus">Disconnected</div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="mode">Mode:</label>
-                    <select id="mode">
-                        <option value="chat">Chat</option>
-                        <option value="riddle">Riddle</option>
-                        <option value="haiku">Haiku</option>
-                        <option value="story">Story</option>
-                    </select>
-                </div>
+            </div>
+
+            <div class="current-mode" id="currentMode">
+                <span class="mode-icon">💬</span>
+                <span class="mode-label">Conversation</span>
+            </div>
+
+            <div class="phone-controls">
                 <button class="btn btn-primary" id="pickupBtn" onclick="pickupPhone()">📞 Pick Up Phone</button>
                 <button class="btn btn-danger" id="hangupBtn" onclick="hangupPhone()" disabled>📞 Hang Up Phone</button>
             </div>
 
-            <div class="control-section">
-                <h3>🤖 AI Model Selection</h3>
-                <div class="form-group">
-                    <label for="modelSelect">Current Model:</label>
-                    <select id="modelSelect" onchange="switchModel()">
-                        <option value="">Loading models...</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Engine Type:</label>
-                    <div id="engineType" style="padding: 8px; background: #f8f9fa; border-radius: 4px; font-size: 0.9em;">
-                        Loading...
-                    </div>
-                </div>
-                <button class="btn btn-info" onclick="refreshModels()" style="margin-top: 5px;">🔄 Refresh Models</button>
-            </div>
-
-            <div class="control-section">
-                <h3>💬 Speak</h3>
-                <div class="form-group">
-                    <label for="message">Your Message:</label>
-                    <textarea id="message" rows="3" placeholder="Type your message here..."></textarea>
-                </div>
-                <button class="btn btn-primary" id="speakBtn" onclick="speak()" disabled>🎤 Speak</button>
-            </div>
-        </div>
-
-        <div class="control-section" style="margin-bottom: 20px;">
-            <h3>🎤 Audio Configuration</h3>
-            <div class="form-group">
-                <label for="inputDevice">Microphone:</label>
-                <select id="inputDevice">
-                    <option value="">Loading...</option>
-                </select>
-                <button class="btn" style="margin-top: 5px; padding: 5px 10px; font-size: 12px;" onclick="testInputDevice()">Test</button>
-            </div>
-            <div class="form-group">
-                <label for="outputDevice">Speaker:</label>
-                <select id="outputDevice">
-                    <option value="">Loading...</option>
-                </select>
-                <button class="btn" style="margin-top: 5px; padding: 5px 10px; font-size: 12px;" onclick="testOutputDevice()">Test</button>
-            </div>
-            <button class="btn btn-primary" onclick="saveAudioConfig()" style="margin-top: 10px;">💾 Save Audio Settings</button>
-        </div>
-
-        <div class="control-section" style="margin-bottom: 20px;">
-            <h3>🎭 Voice Settings</h3>
-            <button class="btn btn-info" onclick="openTTSSettings()" style="margin-bottom: 10px;">⚙️ Configure Voice Settings</button>
-            <div id="currentVoiceSettings" style="font-size: 0.9em; color: #666;">
-                <strong>Current:</strong> <span id="currentPersonalityVoice">Loading...</span>
-            </div>
-        </div>
-
-        <div class="control-section" style="margin-bottom: 20px;">
-            <h3>🔊 Audio Test</h3>
-            <div class="form-group">
-                <label for="testAudioId">Audio ID:</label>
-                <input type="text" id="testAudioId" placeholder="Enter audio ID to test" style="width: 100%; margin-bottom: 10px;">
-                <button class="btn btn-primary" onclick="testAudioPlayback()">🎵 Test Audio Playback</button>
-            </div>
-            <div id="audioTestStatus" style="font-size: 0.9em; color: #666; margin-top: 10px;"></div>
-        </div>
-
-        <div class="lighting-simulation">
-            <h3>💡 Lighting Simulation</h3>
-            <div class="light-bulb" id="lightBulb"></div>
-        </div>
-
-        <div class="conversation">
-            <h3>💭 Conversation History</h3>
-            <div id="conversationHistory"></div>
-        </div>
-
-        <div class="stats">
-            <div class="stat-card">
-                <div class="stat-value" id="totalConversations">0</div>
-                <div class="stat-label">Conversations</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="totalTurns">0</div>
-                <div class="stat-label">Turns</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="avgProcessingTime">0.0s</div>
-                <div class="stat-label">Avg Processing</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="uptime">0s</div>
-                <div class="stat-label">Uptime</div>
-            </div>
-        </div>
-
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p>Processing...</p>
-        </div>
-
-        <div id="messages"></div>
-    </div>
-
-    <!-- TTS Settings Modal -->
-    <div id="ttsSettingsModal" class="modal" style="display: none;">
-        <div class="modal-content" style="max-width: 600px;">
-            <div class="modal-header">
-                <h3>🎭 Voice Settings</h3>
-                <span class="close" onclick="closeTTSSettings()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="settings-section">
-                    <h4>Personality Voice Configuration</h4>
-                    <div class="form-group">
-                        <label for="ttsPersonalitySelect">Select Personality:</label>
-                        <select id="ttsPersonalitySelect" onchange="loadPersonalitySettings()">
+            <div class="settings-section">
+                <h3>⚙️ Settings</h3>
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label for="personalitySelect">Character:</label>
+                        <select id="personalitySelect" onchange="changePersonality()">
                             <option value="trickster">The Trickster</option>
                             <option value="sage">The Sage</option>
                             <option value="muse">The Muse</option>
@@ -583,127 +517,208 @@
                             <option value="night_watch">The Night Watch</option>
                         </select>
                     </div>
-                    
-                    <div class="voice-parameters">
-                        <div class="form-group">
-                            <label for="speedPrompt">Speed Prompt:</label>
-                            <select id="speedPrompt">
-                                <option value="[speed_1]">Very Slow</option>
-                                <option value="[speed_2]">Slow</option>
-                                <option value="[speed_3]">Moderate-Slow</option>
-                                <option value="[speed_4]">Moderate</option>
-                                <option value="[speed_5]">Normal</option>
-                                <option value="[speed_6]">Moderate-Fast</option>
-                                <option value="[speed_7]">Fast</option>
-                                <option value="[speed_8]">Very Fast</option>
-                                <option value="[speed_9]">Extremely Fast</option>
-                                <option value="[speed_10]">Maximum Speed</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="temperature">Temperature (Creativity): <span id="temperatureValue">0.3</span></label>
-                            <input type="range" id="temperature" min="0.1" max="1.0" step="0.1" value="0.3" oninput="updateTemperatureValue()">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="topP">Top P (Diversity): <span id="topPValue">0.7</span></label>
-                            <input type="range" id="topP" min="0.1" max="1.0" step="0.1" value="0.7" oninput="updateTopPValue()">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="repetitionPenalty">Repetition Penalty: <span id="repetitionPenaltyValue">1.05</span></label>
-                            <input type="range" id="repetitionPenalty" min="1.0" max="1.2" step="0.01" value="1.05" oninput="updateRepetitionPenaltyValue()">
-                        </div>
+                    <div class="setting-item">
+                        <label for="modelSelect">Model:</label>
+                        <select id="modelSelect" onchange="switchModel()">
+                            <option value="">Loading...</option>
+                        </select>
                     </div>
-                    
-                    <div class="settings-actions" style="margin-top: 20px;">
-                        <button class="btn btn-primary" onclick="saveTTSSettings()">💾 Save Settings</button>
-                        <button class="btn btn-secondary" onclick="resetTTSSettings()">🔄 Reset to Default</button>
-                        <button class="btn btn-success" onclick="testVoice()">🎤 Test Voice</button>
+                    <div class="setting-item">
+                        <label for="inputDevice">Microphone:</label>
+                        <select id="inputDevice">
+                            <option value="">Loading...</option>
+                        </select>
                     </div>
+                    <div class="setting-item">
+                        <label for="outputDevice">Speaker:</label>
+                        <select id="outputDevice">
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-actions">
+                    <button class="btn btn-secondary" onclick="loadAudioDevices()">🔄 Refresh Audio</button>
+                    <button class="btn btn-secondary" onclick="loadModels()">🔄 Refresh Models</button>
+                    <button class="btn btn-info" onclick="openTTSSettings()">🎭 Voice Settings</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="conversation-panel">
+            <div class="conversation-header">
+                <h3>💬 Conversation</h3>
+                <button onclick="clearConversation()" style="background: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer;">Clear</button>
+            </div>
+            <div class="conversation-container" id="conversation">
+                <div style="text-align: center; color: #6c757d; margin-top: 50px;">
+                    Pick up the phone to start a conversation
+                </div>
+            </div>
+            <div class="input-section">
+                <input type="text" id="message" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
+                <button onclick="speak()">Send</button>
+            </div>
+        </div>
+
+        <div class="lighting-panel">
+            <div class="lighting-header">
+                <h3>💡 Lighting System</h3>
+                <div style="font-size: 0.9em; color: #6c757d;">Real-time audio visualization</div>
+            </div>
+            <div class="lighting-display" id="lightingDisplay">
+                <div class="light off"></div>
+                <div class="light off"></div>
+                <div class="light off"></div>
+                <div class="light off"></div>
+                <div class="light off"></div>
+                <div class="light off"></div>
+                <div class="light off"></div>
+                <div class="light off"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TTS Settings Modal -->
+    <div id="ttsSettingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🎭 Voice Settings</h3>
+                <span class="close" onclick="closeTTSSettings()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="ttsPersonalitySelect">Select Personality:</label>
+                    <select id="ttsPersonalitySelect" onchange="loadPersonalitySettings()">
+                        <option value="trickster">The Trickster</option>
+                        <option value="sage">The Sage</option>
+                        <option value="muse">The Muse</option>
+                        <option value="jester">The Jester</option>
+                        <option value="night_watch">The Night Watch</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="speedPrompt">Speed Prompt:</label>
+                    <select id="speedPrompt">
+                        <option value="[speed_1]">Very Slow</option>
+                        <option value="[speed_2]">Slow</option>
+                        <option value="[speed_3]">Moderate-Slow</option>
+                        <option value="[speed_4]">Moderate</option>
+                        <option value="[speed_5]">Normal</option>
+                        <option value="[speed_6]">Moderate-Fast</option>
+                        <option value="[speed_7]">Fast</option>
+                        <option value="[speed_8]">Very Fast</option>
+                        <option value="[speed_9]">Extremely Fast</option>
+                        <option value="[speed_10]">Maximum Speed</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="temperature">Temperature (Creativity): <span id="temperatureValue">0.3</span></label>
+                    <input type="range" id="temperature" min="0.1" max="1.0" step="0.1" value="0.3" oninput="updateTemperatureValue()">
+                </div>
+                
+                <div class="form-group">
+                    <label for="topP">Top P (Diversity): <span id="topPValue">0.7</span></label>
+                    <input type="range" id="topP" min="0.1" max="1.0" step="0.1" value="0.7" oninput="updateTopPValue()">
+                </div>
+                
+                <div class="form-group">
+                    <label for="repetitionPenalty">Repetition Penalty: <span id="repetitionPenaltyValue">1.05</span></label>
+                    <input type="range" id="repetitionPenalty" min="1.0" max="1.2" step="0.01" value="1.05" oninput="updateRepetitionPenaltyValue()">
+                </div>
+                
+                <div style="margin-top: 20px; text-align: center;">
+                    <button class="btn btn-primary" onclick="saveTTSSettings()">💾 Save Settings</button>
+                    <button class="btn btn-secondary" onclick="resetTTSSettings()">🔄 Reset to Default</button>
+                    <button class="btn btn-info" onclick="testVoice()">🎤 Test Voice</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Global variables
-        let socket;
-        let currentState = 'idle';
-        let sessionActive = false;
-        let lightAnimation = null;
+        let currentSessionId = null;
+        let isConnected = false;
 
-        // Initialize WebSocket connection
-        function initSocket() {
-            socket = io();
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStatus();
+            setInterval(updateStatus, 5000); // Update status every 5 seconds
             
-            socket.on('connect', function() {
-                console.log('Connected to server');
-                updateStatus();
-            });
-            
-            socket.on('disconnect', function() {
-                console.log('Disconnected from server');
-            });
-            
-            socket.on('status', function(data) {
-                updateState(data.state, data.session_active);
-            });
+            // Load initial settings
+            loadAudioDevices();
+            loadModels();
+            loadPersonalitySettings();
+        });
+
+        // Update system status
+        async function updateStatus() {
+            try {
+                // Check backend health using the status endpoint
+                const statusResponse = await fetch('/api/status');
+                const statusData = await statusResponse.json();
+                document.getElementById('backendStatus').textContent = statusData.session_active ? 'Online' : 'Offline';
+                document.getElementById('backendStatus').style.color = statusData.session_active ? '#28a745' : '#dc3545';
+
+                // Get current model info
+                const modelResponse = await fetch('/api/models/current');
+                const modelData = await modelResponse.json();
+                document.getElementById('llmEngine').textContent = modelData.engine_type || 'Unknown';
+                document.getElementById('currentModel').textContent = modelData.current_model || 'Unknown';
+
+                // Update session status
+                document.getElementById('sessionStatus').textContent = statusData.session_active ? 'Connected' : 'Disconnected';
+                document.getElementById('sessionStatus').style.color = statusData.session_active ? '#28a745' : '#6c757d';
+
+            } catch (error) {
+                console.error('Status update failed:', error);
+                document.getElementById('backendStatus').textContent = 'Offline';
+                document.getElementById('backendStatus').style.color = '#dc3545';
+                document.getElementById('sessionStatus').textContent = 'Disconnected';
+                document.getElementById('sessionStatus').style.color = '#6c757d';
+            }
         }
 
-        // Update UI state
-        function updateState(state, sessionActive) {
-            currentState = state;
-            sessionActive = sessionActive;
+        // Update current mode display
+        function updateCurrentMode(modeName) {
+            const modeDisplay = document.getElementById('currentMode');
+            const modeIcons = {
+                'conversation': '💬',
+                'questions': '❓',
+                'riddles': '🧩',
+                'compliments': '💝',
+                'advice': '💡',
+                'stories': '📖',
+                'fashion': '👗'
+            };
             
-            const statusIndicator = document.getElementById('statusIndicator');
-            const pickupBtn = document.getElementById('pickupBtn');
-            const hangupBtn = document.getElementById('hangupBtn');
-            const speakBtn = document.getElementById('speakBtn');
-            const messageInput = document.getElementById('message');
+            const modeLabels = {
+                'conversation': 'Conversation',
+                'questions': 'Questions',
+                'riddles': 'Riddles',
+                'compliments': 'Compliments',
+                'advice': 'Advice',
+                'stories': 'Stories',
+                'fashion': 'Fashion'
+            };
+
+            const icon = modeIcons[modeName] || '💬';
+            const label = modeLabels[modeName] || 'Conversation';
             
-            // Update status indicator
-            statusIndicator.textContent = state.charAt(0).toUpperCase() + state.slice(1);
-            statusIndicator.className = `status-indicator status-${state}`;
+            modeDisplay.innerHTML = `<span class="mode-icon">${icon}</span><span class="mode-label">${label}</span>`;
             
-            // Update button states
-            pickupBtn.disabled = sessionActive;
-            hangupBtn.disabled = !sessionActive;
-            speakBtn.disabled = !sessionActive;
-            messageInput.disabled = !sessionActive;
-            
-            // Update UI based on state
-            switch(state) {
-                case 'idle':
-                    stopLightAnimation();
-                    break;
-                case 'pickup':
-                    // Phone is picked up
-                    break;
-                case 'listening':
-                    // Listening for input
-                    break;
-                case 'processing':
-                    showLoading(true);
-                    break;
-                case 'speaking':
-                    showLoading(false);
-                    // Start lighting animation
-                    break;
-                case 'hangup':
-                    stopLightAnimation();
-                    break;
-                case 'error':
-                    stopLightAnimation();
-                    break;
-            }
+            // Add brief animation
+            modeDisplay.style.transform = 'scale(1.05)';
+            setTimeout(() => {
+                modeDisplay.style.transform = 'scale(1)';
+            }, 200);
         }
 
         // Pick up phone
         async function pickupPhone() {
-            const personality = document.getElementById('personality').value;
-            const mode = document.getElementById('mode').value;
+            const personality = 'trickster';
+            const mode = 'chat';
             
             try {
                 const response = await fetch('/api/pickup', {
@@ -721,8 +736,16 @@
                 
                 if (data.success) {
                     showMessage(data.message, 'success');
+                    currentSessionId = data.session_id;
+                    isConnected = true;
+                    
+                    // Update button states
+                    document.getElementById('pickupBtn').disabled = true;
+                    document.getElementById('hangupBtn').disabled = false;
+                    
+                    // Update status immediately
                     updateStatus();
-                    loadConversation(); // Load any existing conversation
+                    loadConversation();
                 } else {
                     showMessage(data.error, 'error');
                 }
@@ -745,6 +768,14 @@
                 
                 if (data.success) {
                     showMessage(data.message, 'success');
+                    currentSessionId = null;
+                    isConnected = false;
+                    
+                    // Update button states
+                    document.getElementById('pickupBtn').disabled = false;
+                    document.getElementById('hangupBtn').disabled = true;
+                    
+                    // Update status immediately
                     updateStatus();
                     clearConversation();
                 } else {
@@ -757,253 +788,242 @@
 
         // Speak
         async function speak() {
-            const message = document.getElementById('message').value.trim();
+            const message = document.getElementById('message').value;
+            const personality = document.getElementById('personalitySelect').value;
+            const mode = document.getElementById('modelSelect').value;
             
-            if (!message) {
+            if (!message.trim()) {
                 showMessage('Please enter a message', 'error');
                 return;
             }
+            
+            // Add user message to conversation
+            addMessage('You', message, 'user');
             
             try {
                 const response = await fetch('/api/speak', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
                         message: message,
-                        personality: document.getElementById('personality').value,
-                        mode: document.getElementById('mode').value
+                        personality: personality,
+                        mode: mode
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Add AI response to conversation
+                    addMessage(personality.charAt(0).toUpperCase() + personality.slice(1), data.response, 'assistant', data.processing_time, data.selected_mode);
+                    
+                    // Play audio if available
+                    if (data.audio_url) {
+                        const audio = new Audio(data.audio_url);
+                        audio.play().catch(e => console.log('Audio playback failed:', e));
+                    }
+                    
+                    // Animate lighting if amplitude envelope is provided
+                    if (data.amplitude_envelope) {
+                        animateLighting(data.amplitude_envelope);
+                    }
+                    
+                    // Update current mode display if we have selected_mode
+                    if (data.selected_mode) {
+                        updateCurrentMode(data.selected_mode);
+                    }
+                    
+                    // Clear input
+                    document.getElementById('message').value = '';
+                } else {
+                    const errorData = await response.json();
+                    addMessage('System', 'Error: ' + errorData.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('System', 'Network error occurred', 'error');
+            }
+        }
+
+        // Add message to conversation
+        function addMessage(sender, content, type, processingTime = null, selectedMode = null) {
+            const conversation = document.getElementById('conversation');
+            
+            // Clear the placeholder message if it exists
+            if (conversation.children.length === 1 && conversation.children[0].style.textAlign === 'center') {
+                conversation.innerHTML = '';
+            }
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            let metaInfo = '';
+            if (processingTime) {
+                metaInfo += `Processing: ${processingTime.toFixed(2)}s`;
+            }
+            if (selectedMode && selectedMode !== 'conversation') {
+                metaInfo += metaInfo ? ` | Mode: ${selectedMode}` : `Mode: ${selectedMode}`;
+            }
+            
+            messageDiv.innerHTML = `
+                <div class="message-header">${sender}</div>
+                <div class="message-content">${content}</div>
+                ${metaInfo ? `<div class="message-meta">${metaInfo}</div>` : ''}
+            `;
+            
+            conversation.appendChild(messageDiv);
+            conversation.scrollTop = conversation.scrollHeight;
+        }
+
+        // Clear conversation
+        function clearConversation() {
+            const conversation = document.getElementById('conversation');
+            conversation.innerHTML = '<div style="text-align: center; color: #6c757d; margin-top: 50px;">Pick up the phone to start a conversation</div>';
+        }
+
+        // Load conversation (placeholder for future implementation)
+        function loadConversation() {
+            // This could load previous conversation history if needed
+        }
+
+        // Handle Enter key in input
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                speak();
+            }
+        }
+
+        // Show message (toast notification)
+        function showMessage(message, type) {
+            // Simple console logging for now - could be enhanced with toast notifications
+            console.log(`${type.toUpperCase()}: ${message}`);
+        }
+
+        // Animate lighting based on audio amplitude
+        function animateLighting(amplitudeEnvelope) {
+            if (!amplitudeEnvelope || !Array.isArray(amplitudeEnvelope)) {
+                return;
+            }
+
+            const lights = document.querySelectorAll('.light');
+            const numLights = lights.length;
+            
+            // Map amplitude values to lights
+            amplitudeEnvelope.forEach((amplitude, index) => {
+                const lightIndex = Math.floor((index / amplitudeEnvelope.length) * numLights);
+                if (lightIndex < numLights) {
+                    const light = lights[lightIndex];
+                    const intensity = Math.min(amplitude, 1);
+                    
+                    if (intensity > 0.3) {
+                        light.className = 'light on';
+                        light.style.opacity = intensity;
+                    } else {
+                        light.className = 'light off';
+                        light.style.opacity = 1;
+                    }
+                }
+            });
+
+            // Reset lights after animation
+            setTimeout(() => {
+                lights.forEach(light => {
+                    light.className = 'light off';
+                    light.style.opacity = 1;
+                });
+            }, 1000);
+        }
+
+        // Stop lighting animation
+        function stopLightAnimation() {
+            const lights = document.querySelectorAll('.light');
+            lights.forEach(light => {
+                light.className = 'light off';
+                light.style.opacity = 1;
+            });
+        }
+
+        // Character/Personality Management
+        async function changePersonality() {
+            const personality = document.getElementById('personalitySelect').value;
+            console.log(`Character changed to: ${personality}`);
+            // This would update the current session personality if active
+            if (isConnected) {
+                showMessage(`Character changed to ${personality}. Changes will apply to new conversations.`, 'info');
+            }
+        }
+
+        // Model Management
+        async function loadModels() {
+            try {
+                const response = await fetch('/api/models');
+                const data = await response.json();
+                
+                const modelSelect = document.getElementById('modelSelect');
+                modelSelect.innerHTML = '';
+                
+                if (data.models && data.models.length > 0) {
+                    data.models.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model;
+                        option.textContent = model;
+                        if (model === data.current_model) {
+                            option.selected = true;
+                        }
+                        modelSelect.appendChild(option);
+                    });
+                } else {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No models available';
+                    modelSelect.appendChild(option);
+                }
+            } catch (error) {
+                console.error('Failed to load models:', error);
+                const modelSelect = document.getElementById('modelSelect');
+                modelSelect.innerHTML = '<option value="">Failed to load models</option>';
+            }
+        }
+
+        async function switchModel() {
+            const modelSelect = document.getElementById('modelSelect');
+            const selectedModel = modelSelect.value;
+            
+            if (!selectedModel) {
+                return;
+            }
+            
+            try {
+                showMessage(`Switching to model: ${selectedModel}...`, 'info');
+                
+                const response = await fetch('/api/models/switch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model_name: selectedModel
                     })
                 });
                 
                 const data = await response.json();
                 
                 if (data.success) {
-                    console.log('Speak response received:', data);
-                    
-                    // Add messages to conversation
-                    addMessage('You', message, 'user');
-                    addMessage('Assistant', data.response, 'assistant', data.processing_time);
-                    
-                    // Animate lighting
-                    animateLighting(data.amplitude_envelope);
-                    
-                    // Play audio if available
-                    if (data.audio_id) {
-                        playAudio(data.audio_id);
-                    }
-                    
-                    // Clear input
-                    document.getElementById('message').value = '';
-                    
-                    showMessage(`Response received in ${data.processing_time.toFixed(2)}s`, 'success');
+                    showMessage(`Successfully switched to ${selectedModel}`, 'success');
+                    updateStatus(); // Refresh status to show new model
                 } else {
-                    showMessage(data.error, 'error');
+                    showMessage(`Failed to switch model: ${data.error}`, 'error');
                 }
-            } catch (error) {
-                showMessage('Failed to send message: ' + error.message, 'error');
-            }
-        }
-
-        // Add message to conversation
-        function addMessage(sender, text, type, processingTime = null) {
-            console.log(`Adding message: ${sender} - ${text} (${type})`);
-            
-            const conversationHistory = document.getElementById('conversationHistory');
-            if (!conversationHistory) {
-                console.error('Conversation history element not found!');
-                return;
-            }
-            
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${type}`;
-            
-            const timestamp = new Date().toLocaleTimeString();
-            let metaText = `${timestamp}`;
-            if (processingTime) {
-                metaText += ` • Processing: ${processingTime.toFixed(2)}s`;
-            }
-            
-            messageDiv.innerHTML = `
-                <div class="message-header">${sender}</div>
-                <div class="message-text">${text}</div>
-                <div class="message-meta">${metaText}</div>
-            `;
-            
-            conversationHistory.appendChild(messageDiv);
-            conversationHistory.scrollTop = conversationHistory.scrollHeight;
-            
-            console.log(`Message added successfully. Total messages: ${conversationHistory.children.length}`);
-        }
-
-        // Clear conversation
-        function clearConversation() {
-            document.getElementById('conversationHistory').innerHTML = '';
-        }
-
-        // Show loading indicator
-        function showLoading(show) {
-            const loading = document.getElementById('loading');
-            loading.style.display = show ? 'block' : 'none';
-        }
-
-        // Show message
-        function showMessage(text, type) {
-            const messagesDiv = document.getElementById('messages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = type;
-            messageDiv.textContent = text;
-            
-            messagesDiv.appendChild(messageDiv);
-            
-            // Remove message after 5 seconds
-            setTimeout(() => {
-                messageDiv.remove();
-            }, 5000);
-        }
-
-        // Animate lighting based on amplitude envelope
-        function animateLighting(amplitudeEnvelope) {
-            stopLightAnimation();
-            
-            const lightBulb = document.getElementById('lightBulb');
-            let index = 0;
-            
-            lightAnimation = setInterval(() => {
-                if (index < amplitudeEnvelope.length) {
-                    const brightness = amplitudeEnvelope[index];
-                    const intensity = Math.floor(brightness * 255);
-                    
-                    if (intensity > 50) {
-                        lightBulb.classList.add('active');
-                        lightBulb.style.boxShadow = `0 0 ${30 + intensity}px rgba(241, 196, 15, ${brightness})`;
-                    } else {
-                        lightBulb.classList.remove('active');
-                        lightBulb.style.boxShadow = '0 0 20px rgba(255, 255, 255, 0.1)';
-                    }
-                    
-                    index++;
-                } else {
-                    stopLightAnimation();
-                }
-            }, 50); // Update every 50ms
-        }
-
-        // Stop lighting animation
-        function stopLightAnimation() {
-            if (lightAnimation) {
-                clearInterval(lightAnimation);
-                lightAnimation = null;
-            }
-            
-            const lightBulb = document.getElementById('lightBulb');
-            lightBulb.classList.remove('active');
-            lightBulb.style.boxShadow = '0 0 20px rgba(255, 255, 255, 0.1)';
-        }
-
-        // Play audio
-        function playAudio(audioId) {
-            try {
-                console.log(`Attempting to play audio: ${audioId}`);
-                const audioUrl = `/api/audio/${audioId}`;
-                console.log(`Audio URL: ${audioUrl}`);
-                
-                const audio = new Audio(audioUrl);
-                
-                audio.onloadstart = function() {
-                    console.log('Loading audio...');
-                };
-                
-                audio.oncanplay = function() {
-                    console.log('Audio ready to play');
-                    // Try to play with user interaction context
-                    audio.play().then(() => {
-                        console.log('Audio playback started successfully');
-                    }).catch(e => {
-                        console.error('Failed to play audio:', e);
-                        // Show a message to the user about autoplay
-                        showMessage('Audio ready! Click to play.', 'info');
-                    });
-                };
-                
-                audio.onerror = function(e) {
-                    console.error('Audio error:', e);
-                    showMessage('Audio playback error', 'error');
-                };
-                
-                audio.onended = function() {
-                    console.log('Audio playback finished');
-                };
-                
-                // Add click handler to manually play audio if autoplay fails
-                audio.onclick = function() {
-                    audio.play().catch(e => console.error('Manual play failed:', e));
-                };
                 
             } catch (error) {
-                console.error('Error playing audio:', error);
-                showMessage('Audio playback error: ' + error.message, 'error');
+                console.error('Failed to switch model:', error);
+                showMessage('Failed to switch model: ' + error.message, 'error');
             }
         }
 
-        // Update status
-        async function updateStatus() {
-            try {
-                const response = await fetch('/api/status');
-                const data = await response.json();
-                
-                updateState(data.state, data.session_active);
-                updateStats(data.stats);
-            } catch (error) {
-                console.error('Failed to update status:', error);
-            }
-        }
-
-        // Load conversation history
-        async function loadConversation() {
-            try {
-                console.log('Loading conversation history...');
-                const response = await fetch('/api/conversation');
-                const data = await response.json();
-                
-                console.log('Conversation data:', data);
-                
-                // Clear existing conversation
-                clearConversation();
-                
-                // Add each turn to the conversation
-                data.conversation.forEach(turn => {
-                    console.log('Adding turn:', turn);
-                    addMessage('You', turn.user_text, 'user');
-                    addMessage('Assistant', turn.assistant_text, 'assistant', turn.processing_time);
-                });
-                
-                console.log('Conversation loaded successfully');
-            } catch (error) {
-                console.error('Failed to load conversation:', error);
-            }
-        }
-
-        // Update statistics
-        function updateStats(stats) {
-            document.getElementById('totalConversations').textContent = stats.total_conversations;
-            document.getElementById('totalTurns').textContent = stats.total_turns;
-            document.getElementById('avgProcessingTime').textContent = 
-                stats.avg_processing_time ? `${stats.avg_processing_time.toFixed(2)}s` : '0.0s';
-            document.getElementById('uptime').textContent = 
-                `${Math.floor(stats.uptime_seconds)}s`;
-        }
-
-        // Handle Enter key in message input
-        document.getElementById('message').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                speak();
-            }
-        });
-
-        // Audio Configuration Functions
+        // Audio Device Management
         async function loadAudioDevices() {
             try {
                 const response = await fetch('/api/audio/devices');
@@ -1018,29 +1038,33 @@
                 const inputSelect = document.getElementById('inputDevice');
                 inputSelect.innerHTML = '<option value="">Default System Microphone</option>';
                 
-                data.input_devices.forEach(device => {
-                    const option = document.createElement('option');
-                    option.value = device.index;
-                    option.textContent = `[${device.index}] ${device.name} (${device.host_api})`;
-                    if (device.index === data.default_input) {
-                        option.textContent += ' (Default)';
-                    }
-                    inputSelect.appendChild(option);
-                });
+                if (data.input_devices) {
+                    data.input_devices.forEach(device => {
+                        const option = document.createElement('option');
+                        option.value = device.index;
+                        option.textContent = `[${device.index}] ${device.name}`;
+                        if (device.index === data.default_input) {
+                            option.textContent += ' (Default)';
+                        }
+                        inputSelect.appendChild(option);
+                    });
+                }
                 
                 // Populate output devices
                 const outputSelect = document.getElementById('outputDevice');
                 outputSelect.innerHTML = '<option value="">Default System Speaker</option>';
                 
-                data.output_devices.forEach(device => {
-                    const option = document.createElement('option');
-                    option.value = device.index;
-                    option.textContent = `[${device.index}] ${device.name} (${device.host_api})`;
-                    if (device.index === data.default_output) {
-                        option.textContent += ' (Default)';
-                    }
-                    outputSelect.appendChild(option);
-                });
+                if (data.output_devices) {
+                    data.output_devices.forEach(device => {
+                        const option = document.createElement('option');
+                        option.value = device.index;
+                        option.textContent = `[${device.index}] ${device.name}`;
+                        if (device.index === data.default_output) {
+                            option.textContent += ' (Default)';
+                        }
+                        outputSelect.appendChild(option);
+                    });
+                }
                 
                 // Load current configuration
                 loadCurrentAudioConfig();
@@ -1074,87 +1098,7 @@
             }
         }
 
-        async function saveAudioConfig() {
-            try {
-                const inputDevice = document.getElementById('inputDevice').value;
-                const outputDevice = document.getElementById('outputDevice').value;
-                
-                const response = await fetch('/api/audio/config', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        input_device: inputDevice ? parseInt(inputDevice) : null,
-                        output_device: outputDevice ? parseInt(outputDevice) : null
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showMessage('Audio configuration saved successfully!', 'success');
-                } else {
-                    showMessage('Failed to save audio configuration: ' + result.error, 'error');
-                }
-                
-            } catch (error) {
-                console.error('Failed to save audio config:', error);
-                showMessage('Failed to save audio configuration', 'error');
-            }
-        }
-
-        async function testInputDevice() {
-            const deviceIndex = document.getElementById('inputDevice').value;
-            if (!deviceIndex) {
-                showMessage('Please select an input device first', 'warning');
-                return;
-            }
-            
-            try {
-                showMessage('Testing microphone... Speak into the microphone for 3 seconds', 'info');
-                
-                const response = await fetch(`/api/audio/test/input/${deviceIndex}`);
-                const result = await response.json();
-                
-                if (result.success) {
-                    showMessage('Microphone test completed successfully!', 'success');
-                } else {
-                    showMessage('Microphone test failed: ' + result.error, 'error');
-                }
-                
-            } catch (error) {
-                console.error('Failed to test input device:', error);
-                showMessage('Failed to test microphone', 'error');
-            }
-        }
-
-        async function testOutputDevice() {
-            const deviceIndex = document.getElementById('outputDevice').value;
-            if (!deviceIndex) {
-                showMessage('Please select an output device first', 'warning');
-                return;
-            }
-            
-            try {
-                showMessage('Testing speaker... Playing test tone', 'info');
-                
-                const response = await fetch(`/api/audio/test/output/${deviceIndex}`);
-                const result = await response.json();
-                
-                if (result.success) {
-                    showMessage('Speaker test completed successfully!', 'success');
-                } else {
-                    showMessage('Speaker test failed: ' + result.error, 'error');
-                }
-                
-            } catch (error) {
-                console.error('Failed to test output device:', error);
-                showMessage('Failed to test speaker', 'error');
-            }
-        }
-
-        // TTS Settings Functions
+        // TTS Settings Management
         function openTTSSettings() {
             document.getElementById('ttsSettingsModal').style.display = 'block';
             loadPersonalitySettings();
@@ -1183,9 +1127,6 @@
                     updateTemperatureValue();
                     updateTopPValue();
                     updateRepetitionPenaltyValue();
-                    
-                    // Update current voice display
-                    updateCurrentVoiceDisplay(personality, settings);
                 }
             } catch (error) {
                 console.error('Failed to load personality settings:', error);
@@ -1230,7 +1171,6 @@
                 
                 if (result.success) {
                     showMessage(result.message, 'success');
-                    updateCurrentVoiceDisplay(personality, settings);
                 } else {
                     showMessage('Failed to save settings: ' + result.error, 'error');
                 }
@@ -1279,10 +1219,12 @@
                 if (data.success) {
                     showMessage('Voice test completed! Check the conversation for the result.', 'success');
                     
-                    // Play the audio if available
-                    if (data.audio_id) {
-                        playAudio(data.audio_id);
-                    }
+                    // Add test message to conversation
+                    addMessage('You', 'Voice Test', 'user');
+                    addMessage('Assistant', data.response, 'assistant', data.processing_time, data.selected_mode);
+                    
+                    // Animate lighting
+                    animateLighting(data.amplitude_envelope);
                 } else {
                     showMessage('Voice test failed: ' + data.error, 'error');
                 }
@@ -1292,148 +1234,6 @@
                 showMessage('Failed to test voice', 'error');
             }
         }
-
-        function updateCurrentVoiceDisplay(personality, settings) {
-            const display = document.getElementById('currentPersonalityVoice');
-            const speedText = settings.prompt ? settings.prompt.replace('[speed_', '').replace(']', '') : '5';
-            display.textContent = `${personality} (Speed: ${speedText}, Temp: ${settings.temperature}, Top-P: ${settings.top_P})`;
-        }
-
-        // Load initial voice settings
-        async function loadInitialVoiceSettings() {
-            try {
-                const response = await fetch('/api/personalities');
-                const data = await response.json();
-                
-                if (data.personalities && data.personalities.length > 0) {
-                    const currentPersonality = document.getElementById('personality').value;
-                    const personality = data.personalities.find(p => p.id === currentPersonality);
-                    
-                    if (personality && personality.tts_settings) {
-                        updateCurrentVoiceDisplay(currentPersonality, personality.tts_settings);
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to load initial voice settings:', error);
-            }
-        }
-
-        // Model Management Functions
-        async function loadModels() {
-            try {
-                const response = await fetch('/api/models');
-                const data = await response.json();
-                
-                const modelSelect = document.getElementById('modelSelect');
-                const engineType = document.getElementById('engineType');
-                
-                // Clear existing options
-                modelSelect.innerHTML = '';
-                
-                if (data.models && data.models.length > 0) {
-                    data.models.forEach(model => {
-                        const option = document.createElement('option');
-                        option.value = model;
-                        option.textContent = model;
-                        if (model === data.current_model) {
-                            option.selected = true;
-                        }
-                        modelSelect.appendChild(option);
-                    });
-                } else {
-                    const option = document.createElement('option');
-                    option.value = '';
-                    option.textContent = 'No models available';
-                    modelSelect.appendChild(option);
-                }
-                
-                // Update engine type display
-                engineType.textContent = data.engine_type || 'Unknown';
-                
-            } catch (error) {
-                console.error('Failed to load models:', error);
-                const modelSelect = document.getElementById('modelSelect');
-                modelSelect.innerHTML = '<option value="">Failed to load models</option>';
-            }
-        }
-
-        async function switchModel() {
-            const modelSelect = document.getElementById('modelSelect');
-            const selectedModel = modelSelect.value;
-            
-            if (!selectedModel) {
-                return;
-            }
-            
-            try {
-                showMessage(`Switching to model: ${selectedModel}...`, 'info');
-                
-                const response = await fetch('/api/models/switch', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        model_name: selectedModel
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    showMessage(`Successfully switched to ${selectedModel}`, 'success');
-                } else {
-                    showMessage(`Failed to switch model: ${data.error}`, 'error');
-                }
-                
-            } catch (error) {
-                console.error('Failed to switch model:', error);
-                showMessage('Failed to switch model: ' + error.message, 'error');
-            }
-        }
-
-        async function refreshModels() {
-            showMessage('Refreshing models...', 'info');
-            await loadModels();
-            showMessage('Models refreshed', 'success');
-        }
-
-        // Audio Test Functions
-        async function testAudioPlayback() {
-            const audioId = document.getElementById('testAudioId').value.trim();
-            if (!audioId) {
-                showMessage('Please enter an audio ID to test.', 'warning');
-                return;
-            }
-
-            try {
-                showMessage(`Attempting to play audio with ID: ${audioId}...`, 'info');
-                const response = await fetch(`/api/audio/play/${audioId}`);
-                const result = await response.json();
-
-                if (result.success) {
-                    showMessage(`Audio with ID ${audioId} is ready for playback. Click the "🎵 Test Audio Playback" button to play.`, 'success');
-                } else {
-                    showMessage(`Audio with ID ${audioId} not found or not ready for playback.`, 'error');
-                }
-            } catch (error) {
-                console.error('Failed to test audio playback:', error);
-                showMessage('Failed to test audio playback: ' + error.message, 'error');
-            }
-        }
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            initSocket();
-            updateStatus();
-            loadAudioDevices(); // Load audio devices
-            loadConversation(); // Load conversation history
-            loadInitialVoiceSettings(); // Load voice settings
-            loadModels(); // Load available models
-            
-            // Update status every 5 seconds
-            setInterval(updateStatus, 5000);
-        });
     </script>
 </body>
 </html>

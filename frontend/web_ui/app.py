@@ -204,6 +204,8 @@ def speak():
             'audio_duration': tts_metadata.get('duration', 0),
             'amplitude_envelope': amplitude_envelope,
             'audio_id': audio_id,
+            'audio_url': f'/api/audio/{audio_id}',
+            'selected_mode': mode,
             'session_id': state_manager.session.session_id
         })
         
@@ -514,14 +516,28 @@ def get_audio(audio_id):
         # Don't delete immediately - let the browser cache it
         # del state_manager._audio_cache[audio_id]
         
-        return Response(
-            audio_data['audio_data'],
-            mimetype='audio/wav',
-            headers={
-                'Content-Disposition': f'attachment; filename=speech_{audio_id}.wav',
-                'Cache-Control': 'no-cache'
-            }
-        )
+        # Check if the audio data is MP3 (contains LAME header) or WAV
+        audio_bytes = audio_data['audio_data']
+        if audio_bytes.startswith(b'ID3') or b'LAME' in audio_bytes[:100]:
+            # It's MP3 format
+            return Response(
+                audio_bytes,
+                mimetype='audio/mpeg',
+                headers={
+                    'Content-Disposition': f'attachment; filename=speech_{audio_id}.mp3',
+                    'Cache-Control': 'no-cache'
+                }
+            )
+        else:
+            # It's WAV format
+            return Response(
+                audio_bytes,
+                mimetype='audio/wav',
+                headers={
+                    'Content-Disposition': f'attachment; filename=speech_{audio_id}.wav',
+                    'Cache-Control': 'no-cache'
+                }
+            )
         
     except Exception as e:
         print(f"Error serving audio {audio_id}: {e}")
