@@ -556,6 +556,7 @@
             </div>
             <div class="input-section">
                 <input type="text" id="message" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
+                <button id="micBtn" onclick="toggleVoiceInput()" title="Speak your message">🎙️</button>
                 <button onclick="speak()">Send</button>
             </div>
         </div>
@@ -640,6 +641,10 @@
     <script>
         let currentSessionId = null;
         let isConnected = false;
+        let recognition = null;
+        let isListening = false;
+        let accumulatedTranscript = '';
+        const autoSendOnFinal = true;
 
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', function() {
@@ -650,6 +655,9 @@
             loadAudioDevices();
             loadModels();
             loadPersonalitySettings();
+
+            // Initialize browser speech recognition (if available)
+            initSpeechRecognition();
         });
 
         // Update system status
@@ -892,6 +900,106 @@
         function handleKeyPress(event) {
             if (event.key === 'Enter') {
                 speak();
+            }
+        }
+
+        // Browser Speech Recognition (Web Speech API)
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                console.warn('Web Speech API not supported in this browser.');
+                const mic = document.getElementById('micBtn');
+                if (mic) {
+                    mic.disabled = true;
+                    mic.title = 'Speech recognition not supported in this browser';
+                }
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.interimResults = true;
+            recognition.continuous = false; // single utterance
+
+            recognition.onstart = () => {
+                isListening = true;
+                accumulatedTranscript = '';
+                updateMicButton(true);
+            };
+
+            recognition.onerror = (event) => {
+                console.warn('Speech recognition error:', event.error);
+                stopVoiceInput();
+            };
+
+            recognition.onresult = (event) => {
+                let interim = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        accumulatedTranscript += transcript + ' ';
+                    } else {
+                        interim += transcript;
+                    }
+                }
+                const input = document.getElementById('message');
+                input.value = (accumulatedTranscript + interim).trim();
+            };
+
+            recognition.onend = () => {
+                updateMicButton(false);
+                isListening = false;
+                const finalText = (accumulatedTranscript || '').trim();
+                if (finalText && autoSendOnFinal) {
+                    speak();
+                }
+            };
+        }
+
+        function toggleVoiceInput() {
+            if (!isConnected) {
+                showMessage('Pick up the phone first to start speech recognition.', 'info');
+                return;
+            }
+            if (!recognition) {
+                showMessage('Speech recognition not supported in this browser.', 'error');
+                return;
+            }
+            if (isListening) {
+                stopVoiceInput();
+            } else {
+                startVoiceInput();
+            }
+        }
+
+        function startVoiceInput() {
+            try {
+                accumulatedTranscript = '';
+                recognition.start();
+            } catch (e) {
+                console.warn('Failed to start recognition:', e);
+            }
+        }
+
+        function stopVoiceInput() {
+            try {
+                recognition.stop();
+            } catch (e) {
+                // no-op
+            }
+        }
+
+        function updateMicButton(active) {
+            const mic = document.getElementById('micBtn');
+            if (!mic) return;
+            if (active) {
+                mic.textContent = '🎙️ Listening…';
+                mic.style.background = '#dc3545';
+                mic.style.color = 'white';
+            } else {
+                mic.textContent = '🎙️';
+                mic.style.background = '';
+                mic.style.color = '';
             }
         }
 
